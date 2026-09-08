@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LunchCall{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+  {% if admin %}
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark">L</span>
+      <span>LunchCall</span>
+    </a>
+    <nav>
+      <a class="{{ 'active' if request.url.path == '/' else '' }}" href="/">오늘의 식수</a>
+      <a class="{{ 'active' if request.url.path.startswith('/employees') else '' }}" href="/employees">직원 관리</a>
+      <a class="{{ 'active' if request.url.path.startswith('/history') else '' }}" href="/history">확정 이력</a>
+    </nav>
+    <div class="account">
+      <span>{{ admin.display_name }}</span>
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="text-button" type="submit">로그아웃</button>
+      </form>
+    </div>
+  </header>
+  {% endif %}
+
+  <main class="{% block main_class %}page-shell{% endblock %}">
+    {% if message %}<div class="toast success">{{ message }}</div>{% endif %}
+    {% if error %}<div class="toast error">{{ error }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+

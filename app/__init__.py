@@ -1,0 +1,2 @@
+"""LunchCall prototype application."""
+

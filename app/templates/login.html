@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}관리자 로그인 · LunchCall{% endblock %}
+{% block main_class %}login-shell{% endblock %}
+{% block content %}
+<section class="login-card">
+  <div class="login-copy">
+    <span class="eyebrow">MEAL COUNT, MADE SIMPLE</span>
+    <h1>오늘의 식수,<br>한 번에 확정하세요.</h1>
+    <p>불참자만 체크하고 식당으로 바로 전달합니다.</p>
+  </div>
+  <form class="login-form" method="post" action="/login">
+    <div class="login-logo"><span class="brand-mark">L</span> LunchCall</div>
+    <h2>관리자 로그인</h2>
+    <p class="muted">식수 관리자 계정으로 로그인해 주세요.</p>
+    {% if error %}<div class="inline-error">{{ error }}</div>{% endif %}
+    <label>로그인 아이디<input name="login_id" autocomplete="username" required autofocus></label>
+    <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="primary wide" type="submit">로그인</button>
+    {% if settings.app_env == 'development' %}
+    <p class="demo-hint">프로토타입 계정: <code>{{ settings.admin_login_id }}</code> / 환경 변수의 ADMIN_PASSWORD</p>
+    {% endif %}
+  </form>
+</section>
+{% endblock %}
+

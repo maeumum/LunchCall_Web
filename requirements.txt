@@ -1,0 +1,10 @@
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+SQLAlchemy==2.0.43
+Jinja2==3.1.6
+python-multipart==0.0.20
+python-dotenv==1.2.3
+argon2-cffi==25.1.0
+httpx==0.28.1
+tzdata==2025.2
+pytest==8.4.2
