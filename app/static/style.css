@@ -5,3 +5,8 @@
 @media(max-width:900px){.content-grid,.employees-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(3,1fr)}nav{margin-left:25px}.account>span{display:none}.login-card{grid-template-columns:1fr;max-width:500px}.login-copy{display:none}}
 @media(max-width:640px){.site-header{padding:0 16px}.brand>span:last-child{display:none}nav{margin-left:12px;gap:0}nav a{padding:9px;font-size:12px}.page-shell{padding:30px 15px 60px}.page-heading h1{font-size:26px}.stats-grid{grid-template-columns:1fr}.employee-grid{grid-template-columns:1fr}.panel{padding:18px}.history-card{grid-template-columns:1fr;gap:10px}.login-shell{padding:14px}.login-form{padding:38px 25px}}
 
+.stack-form select{border:1px solid #dfe5e1;border-radius:9px;padding:10px;background:white;font-family:inherit;outline:none}.stack-form select:focus{border-color:#7eb69d;box-shadow:0 0 0 3px var(--green-soft)}
+
+.small-button.danger{background:var(--orange-soft);color:#b64f26}.small-button.danger:hover{background:#ffe1d4}
+
+.field-help{color:var(--muted);font-size:10px;font-weight:500}

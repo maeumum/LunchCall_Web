@@ -11,6 +11,7 @@ if TEST_DB.exists():
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
 os.environ["ADMIN_LOGIN_ID"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "StrongPrototype123!"
+os.environ["DEPARTMENTS"] = "교육운영홍보팀,콘텐츠연구개발팀,경영지원팀,AISW연구개발팀"
 os.environ["PROTOTYPE_ALLOW_EARLY_CONFIRM"] = "true"
 os.environ["SMS_MODE"] = "mock"
 
@@ -51,17 +52,42 @@ def test_admin_meal_flow() -> None:
         assert "오늘의 식수" in login.text
         csrf = csrf_from(login.text)
 
+        invalid_department = client.post(
+            "/employees",
+            data={
+                "csrf_token": csrf,
+                "name": "잘못된부서",
+                "department": "목록에없는팀",
+                "phone": "",
+            },
+            follow_redirects=True,
+        )
+        assert "목록에 있는 부서를 선택해 주세요" in invalid_department.text
+
+        invalid_phone = client.post(
+            "/employees",
+            data={
+                "csrf_token": csrf,
+                "name": "잘못된번호",
+                "department": "경영지원팀",
+                "phone": "010123456789",
+            },
+            follow_redirects=True,
+        )
+        assert "휴대전화 번호 11자리" in invalid_phone.text
+
         created = client.post(
             "/employees",
             data={
                 "csrf_token": csrf,
                 "name": "홍길동",
-                "department": "개발팀",
-                "phone": "",
+                "department": "AISW연구개발팀",
+                "phone": "01012345678",
             },
             follow_redirects=True,
         )
         assert "홍길동님을 추가했습니다" in created.text
+        assert "010-1234-5678" in created.text
 
         dashboard = client.get("/")
         assert "홍길동" in dashboard.text
@@ -94,6 +120,16 @@ def test_admin_meal_flow() -> None:
             "/confirm", data={"csrf_token": csrf}, follow_redirects=True
         )
         assert "이미 확정된 식수입니다" in duplicate.text
+
+        csrf = csrf_from(duplicate.text)
+        deleted = client.post(
+            f"/employees/{employee_id.group(1)}/delete",
+            data={"csrf_token": csrf},
+            follow_redirects=True,
+        )
+        assert "직원 목록에서 삭제했습니다" in deleted.text
+        employee_list = client.get("/employees")
+        assert f"/employees/{employee_id.group(1)}/status" not in employee_list.text
 
 
 def teardown_module() -> None:

@@ -21,6 +21,9 @@ class Settings:
     admin_login_id: str = os.getenv("ADMIN_LOGIN_ID", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "LunchCall123!")
     admin_display_name: str = os.getenv("ADMIN_DISPLAY_NAME", "식수 관리자")
+    departments_raw: str = os.getenv(
+        "DEPARTMENTS", "교육운영홍보팀,콘텐츠연구개발팀,경영지원팀,AISW연구개발팀"
+    )
     session_hours: int = int(os.getenv("SESSION_HOURS", "8"))
     sms_mode: str = os.getenv("SMS_MODE", "mock")
     sms_recipient: str = os.getenv("SMS_RECIPIENT", "010-0000-0000")
@@ -33,6 +36,14 @@ class Settings:
     @property
     def cookie_secure(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def departments(self) -> tuple[str, ...]:
+        return tuple(
+            department.strip()
+            for department in self.departments_raw.split(",")
+            if department.strip()
+        )
 
 
 settings = Settings()

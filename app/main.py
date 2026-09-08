@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
+import re
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -76,6 +77,15 @@ def require_auth(request: Request, db: Session):
 def require_csrf(session, csrf_token: str) -> None:
     if not csrf_token or csrf_token != session.csrf_token:
         raise HTTPException(status_code=403, detail="잘못된 요청입니다.")
+
+
+def normalize_phone(phone: str) -> str | None:
+    digits = re.sub(r"\D", "", phone)
+    if not digits:
+        return None
+    if len(digits) != 11 or not digits.startswith("010"):
+        raise ValueError("연락처는 010으로 시작하는 휴대전화 번호 11자리를 입력해 주세요.")
+    return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
 
 
 @app.exception_handler(401)
@@ -231,7 +241,13 @@ def retry_sms(
 @app.get("/employees", response_class=HTMLResponse)
 def employees_page(request: Request, db: Session = Depends(get_db)):
     session = require_auth(request, db)
-    employees = list(db.scalars(select(Employee).order_by(Employee.status, Employee.name)))
+    employees = list(
+        db.scalars(
+            select(Employee)
+            .where(Employee.status != "DELETED")
+            .order_by(Employee.status, Employee.name)
+        )
+    )
     return templates.TemplateResponse(
         request,
         "employees.html",
@@ -239,6 +255,7 @@ def employees_page(request: Request, db: Session = Depends(get_db)):
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "employees": employees,
+            "departments": settings.departments,
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
         },
@@ -258,11 +275,17 @@ def employee_create(
     require_csrf(session, csrf_token)
     if not name.strip():
         return redirect("/employees", error="직원 이름을 입력해 주세요.")
+    if department not in settings.departments:
+        return redirect("/employees", error="목록에 있는 부서를 선택해 주세요.")
+    try:
+        normalized_phone = normalize_phone(phone)
+    except ValueError as exc:
+        return redirect("/employees", error=str(exc))
     db.add(
         Employee(
             name=name.strip(),
-            department=department.strip() or None,
-            phone=phone.strip() or None,
+            department=department,
+            phone=normalized_phone,
         )
     )
     db.commit()
@@ -287,6 +310,26 @@ def employee_status(
     employee.status = status
     db.commit()
     return redirect("/employees", message=f"{employee.name}님의 상태를 변경했습니다.")
+
+
+@app.post("/employees/{employee_id}/delete")
+def employee_delete(
+    employee_id: int,
+    request: Request,
+    csrf_token: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    employee = db.get(Employee, employee_id)
+    if not employee or employee.status == "DELETED":
+        raise HTTPException(status_code=404)
+    employee.status = "DELETED"
+    db.commit()
+    return redirect(
+        "/employees",
+        message=f"{employee.name}님을 직원 목록에서 삭제했습니다.",
+    )
 
 
 @app.get("/history", response_class=HTMLResponse)
