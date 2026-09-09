@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 from urllib.parse import quote
 
+import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -310,6 +311,39 @@ def employee_status(
     employee.status = status
     db.commit()
     return redirect("/employees", message=f"{employee.name}님의 상태를 변경했습니다.")
+
+
+@app.post("/employees/{employee_id}/edit")
+def employee_edit(
+    employee_id: int,
+    request: Request,
+    csrf_token: str = Form(...),
+    name: str = Form(...),
+    department: str = Form(...),
+    phone: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    employee = db.get(Employee, employee_id)
+    if not employee or employee.status == "DELETED":
+        raise HTTPException(status_code=404)
+
+    normalized_name = name.strip()
+    if not normalized_name:
+        return redirect("/employees", error="직원 이름을 입력해 주세요.")
+    if department not in settings.departments:
+        return redirect("/employees", error="목록에 있는 부서를 선택해 주세요.")
+    try:
+        normalized_phone = normalize_phone(phone)
+    except ValueError as exc:
+        return redirect("/employees", error=str(exc))
+
+    employee.name = normalized_name
+    employee.department = department
+    employee.phone = normalized_phone
+    db.commit()
+    return redirect("/employees", message=f"{employee.name}님의 정보를 수정했습니다.")
 
 
 @app.post("/employees/{employee_id}/delete")

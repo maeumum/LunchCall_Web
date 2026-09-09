@@ -1,13 +1,49 @@
+const formatPhoneInput = (input) => {
+  const digits = input.value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 3) {
+    input.value = digits;
+  } else if (digits.length <= 7) {
+    input.value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  } else {
+    input.value = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+};
+
 document.querySelectorAll("[data-phone-input]").forEach((input) => {
   input.addEventListener("input", () => {
-    const digits = input.value.replace(/\D/g, "").slice(0, 11);
-
-    if (digits.length <= 3) {
-      input.value = digits;
-    } else if (digits.length <= 7) {
-      input.value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    } else {
-      input.value = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-    }
+    formatPhoneInput(input);
   });
 });
+
+const employeeEditDialog = document.querySelector("#employee-edit-dialog");
+
+if (employeeEditDialog) {
+  const editForm = employeeEditDialog.querySelector("#employee-edit-form");
+  const nameInput = employeeEditDialog.querySelector("#edit-employee-name");
+  const departmentSelect = employeeEditDialog.querySelector("#edit-employee-department");
+  const phoneInput = employeeEditDialog.querySelector("#edit-employee-phone");
+
+  document.querySelectorAll("[data-employee-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editForm.action = `/employees/${button.dataset.employeeId}/edit`;
+      nameInput.value = button.dataset.employeeName;
+      departmentSelect.value = button.dataset.employeeDepartment;
+      phoneInput.value = button.dataset.employeePhone;
+      formatPhoneInput(phoneInput);
+      employeeEditDialog.showModal();
+      nameInput.focus();
+      nameInput.select();
+    });
+  });
+
+  employeeEditDialog.querySelectorAll("[data-modal-close]").forEach((button) => {
+    button.addEventListener("click", () => employeeEditDialog.close());
+  });
+
+  employeeEditDialog.addEventListener("click", (event) => {
+    if (event.target === employeeEditDialog) {
+      employeeEditDialog.close();
+    }
+  });
+}
