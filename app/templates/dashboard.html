@@ -65,22 +65,17 @@
       <div class="summary-number"><strong>{{ daily.meal_count if daily.status == 'CONFIRMED' else summary.meal_count }}</strong><span>명이 식사합니다</span></div>
       <dl>
         <div><dt>불참자</dt><dd>
-          {% set absent_names = [] %}
-          {% for employee in summary.employees if employee.id in summary.absent_ids %}{% set _ = absent_names.append(employee.name) %}{% endfor %}
           {% if daily.status == 'CONFIRMED' %}
             {{ confirmed_absent_names|join(', ') if confirmed_absent_names else '없음' }}
           {% else %}
-            {{ absent_names|join(', ') if absent_names else '없음' }}
+            {{ draft_absent_names|join(', ') if draft_absent_names else '없음' }}
           {% endif %}
         </dd></div>
         <div><dt>발송 번호</dt><dd>{{ settings.sms_recipient }}</dd></div>
         <div><dt>확정 가능</dt><dd>오전 9:50부터</dd></div>
       </dl>
       {% if daily.status == 'DRAFT' %}
-      <form method="post" action="/confirm" onsubmit="return confirm('최종 확정 후에는 수정할 수 없습니다. 식당으로 문자를 전송할까요?')">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="primary wide" type="submit" {% if holiday or not summary.employees %}disabled{% endif %}>최종 확정 및 문자 전송</button>
-      </form>
+      <button class="primary wide" type="button" data-confirm-sms-open {% if holiday or not summary.employees %}disabled{% endif %}>최종 확정 및 문자 전송</button>
       <p class="fine-print">확정 후에는 불참자와 식사 인원을 수정할 수 없습니다.</p>
       {% else %}
       <div class="confirmed-box"><strong>확정 완료</strong><span>{{ daily.confirmed_at.strftime('%H:%M') if daily.confirmed_at else '' }} · {{ daily.confirmer.display_name if daily.confirmer else '관리자' }}</span></div>
@@ -109,4 +104,45 @@
     </article>
   </aside>
 </section>
+
+{% if daily.status == 'DRAFT' %}
+<dialog class="modal confirm-sms-modal" id="confirm-sms-dialog" aria-labelledby="confirm-sms-title">
+  <form class="modal-card" method="post" action="/confirm" data-confirm-sms-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="modal-heading">
+      <div>
+        <span class="eyebrow">FINAL CONFIRMATION</span>
+        <h2 id="confirm-sms-title">최종 확정 및 문자 발송</h2>
+        <p>아래 내용을 확인한 후 식당으로 전송해 주세요.</p>
+      </div>
+      <button class="modal-close" type="button" data-confirm-sms-close aria-label="최종 확인 창 닫기">×</button>
+    </div>
+
+    <div class="confirm-counts">
+      <div><span>재직</span><strong>{{ summary.active_count }}명</strong></div>
+      <div><span>불참</span><strong>{{ summary.absent_count }}명</strong></div>
+      <div class="highlight"><span>식사</span><strong>{{ summary.meal_count }}명</strong></div>
+    </div>
+
+    <div class="confirm-detail">
+      <div><span>불참자</span><strong>{{ draft_absent_names|join(', ') if draft_absent_names else '없음' }}</strong></div>
+      <div><span>수신 번호</span><strong>{{ settings.sms_recipient }}</strong></div>
+    </div>
+
+    <div class="sms-preview">
+      <span>실제 발송 문구</span>
+      <p>{{ sms_preview }}</p>
+    </div>
+
+    <div class="confirm-warning">
+      최종 확정 후에는 오늘의 불참자와 식사 인원을 수정할 수 없습니다.
+    </div>
+
+    <div class="modal-actions confirm-modal-actions">
+      <button class="secondary" type="button" data-confirm-sms-close>취소</button>
+      <button class="primary" type="submit" data-confirm-sms-submit>확정하고 전송</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

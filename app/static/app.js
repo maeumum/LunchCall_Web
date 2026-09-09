@@ -152,3 +152,28 @@ if (mealSearchInput) {
     });
   });
 }
+
+const confirmSmsDialog = document.querySelector("#confirm-sms-dialog");
+
+if (confirmSmsDialog) {
+  const openButton = document.querySelector("[data-confirm-sms-open]");
+  const confirmForm = confirmSmsDialog.querySelector("[data-confirm-sms-form]");
+  const submitButton = confirmSmsDialog.querySelector("[data-confirm-sms-submit]");
+
+  openButton.addEventListener("click", () => confirmSmsDialog.showModal());
+
+  confirmSmsDialog.querySelectorAll("[data-confirm-sms-close]").forEach((button) => {
+    button.addEventListener("click", () => confirmSmsDialog.close());
+  });
+
+  confirmSmsDialog.addEventListener("click", (event) => {
+    if (event.target === confirmSmsDialog) {
+      confirmSmsDialog.close();
+    }
+  });
+
+  confirmForm.addEventListener("submit", () => {
+    submitButton.disabled = true;
+    submitButton.textContent = "전송 중...";
+  });
+}

@@ -20,6 +20,7 @@ from .models import Admin, AdminSession, DailyMeal, Employee, Holiday, SmsLog
 from .security import create_session, delete_session, get_session, hash_password, verify_password
 from .services import (
     BusinessRuleError,
+    build_sms_message,
     confirm_and_send,
     get_or_create_daily_meal,
     holiday_name,
@@ -249,9 +250,20 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "now": now,
             "daily": daily,
             "summary": summary,
+            "draft_absent_names": [
+                employee.name
+                for employee in summary["employees"]
+                if employee.id in summary["absent_ids"]
+            ],
             "confirmed_absent_names": [
                 absence.employee_name_snapshot for absence in daily.absences
             ],
+            "sms_preview": build_sms_message(
+                now.date(),
+                daily.meal_count
+                if daily.status == "CONFIRMED" and daily.meal_count is not None
+                else summary["meal_count"],
+            ),
             "holiday": holiday_name(db, now.date()),
             "logs": logs,
             "message": request.query_params.get("message"),
