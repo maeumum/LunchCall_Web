@@ -97,7 +97,11 @@ def test_admin_meal_flow() -> None:
         assert "010-1234-5678" in created.text
         assert "이름, 부서 또는 연락처 검색" in created.text
         assert "data-employee-search-form" in created.text
+        assert "data-employee-department-filter" in created.text
+        assert "data-employee-status-filter" in created.text
         assert 'data-search-text="홍길동 AISW연구개발팀 010-1234-5678"' in created.text
+        assert 'data-department="AISW연구개발팀"' in created.text
+        assert 'data-status="ACTIVE"' in created.text
 
         employee_id = re.search(r'data-employee-id="(\d+)"', created.text)
         assert employee_id

@@ -21,10 +21,30 @@
 
     {% if employees %}
     <div class="employee-toolbar">
-      <form class="employee-search" data-employee-search-form role="search">
-        <span aria-hidden="true">⌕</span>
-        <input type="search" data-employee-search placeholder="이름, 부서 또는 연락처 검색" autocomplete="off" aria-label="직원 검색">
-      </form>
+      <div class="employee-toolbar-controls">
+        <form class="employee-search" data-employee-search-form role="search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" data-employee-search placeholder="이름, 부서 또는 연락처 검색" autocomplete="off" aria-label="직원 검색">
+        </form>
+        <div class="employee-filters" aria-label="직원 목록 필터">
+          <label>
+            <span class="sr-only">부서 필터</span>
+            <select data-employee-department-filter aria-label="부서별 필터">
+              <option value="">전체 부서</option>
+              {% for department in departments %}<option value="{{ department }}">{{ department }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">재직 상태 필터</span>
+            <select data-employee-status-filter aria-label="재직 상태별 필터">
+              <option value="">전체 상태</option>
+              <option value="ACTIVE">재직</option>
+              <option value="LEAVE">휴직</option>
+              <option value="RETIRED">퇴사</option>
+            </select>
+          </label>
+        </div>
+      </div>
       <span class="search-result-count" data-employee-result-count aria-live="polite">전체 {{ employees|length }}명</span>
     </div>
     <div class="table-wrap">
@@ -34,7 +54,7 @@
         </thead>
         <tbody>
           {% for employee in employees %}
-          <tr data-employee-row data-search-text="{{ employee.name }} {{ employee.department or '' }} {{ employee.phone or '' }}">
+          <tr data-employee-row data-search-text="{{ employee.name }} {{ employee.department or '' }} {{ employee.phone or '' }}" data-department="{{ employee.department or '' }}" data-status="{{ employee.status }}">
             <td><strong>{{ employee.name }}</strong></td>
             <td>{{ employee.department or '-' }}</td>
             <td>{{ employee.phone or '-' }}</td>
