@@ -11,12 +11,12 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import Base, SessionLocal, engine, get_db
-from .models import Admin, DailyMeal, Employee, Holiday, SmsLog
+from .models import Admin, AdminSession, DailyMeal, Employee, Holiday, SmsLog
 from .security import create_session, delete_session, get_session, hash_password, verify_password
 from .services import (
     BusinessRuleError,
@@ -37,8 +37,8 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def initialize_database() -> None:
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        admin = db.scalar(select(Admin).where(Admin.login_id == settings.admin_login_id))
-        if not admin:
+        admin_count = db.scalar(select(func.count(Admin.id))) or 0
+        if admin_count == 0:
             db.add(
                 Admin(
                     login_id=settings.admin_login_id,
@@ -144,6 +144,85 @@ def logout(
     delete_session(db, request.cookies.get("lunchcall_session"))
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie("lunchcall_session")
+    return response
+
+
+@app.get("/account", response_class=HTMLResponse)
+def account_page(request: Request, db: Session = Depends(get_db)):
+    session = require_auth(request, db)
+    return templates.TemplateResponse(
+        request,
+        "account.html",
+        {
+            "admin": session.admin,
+            "csrf_token": session.csrf_token,
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
+        },
+    )
+
+
+@app.post("/account")
+def account_update(
+    request: Request,
+    csrf_token: str = Form(...),
+    login_id: str = Form(...),
+    current_password: str = Form(...),
+    new_password: str = Form(""),
+    new_password_confirm: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    admin = session.admin
+
+    if not verify_password(admin.password_hash, current_password):
+        return redirect("/account", error="현재 비밀번호가 올바르지 않습니다.")
+
+    normalized_login_id = login_id.strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]{3,40}", normalized_login_id):
+        return redirect(
+            "/account",
+            error="로그인 아이디는 영문, 숫자, 마침표, 밑줄, 하이픈으로 3~40자까지 입력해 주세요.",
+        )
+
+    duplicate_admin = db.scalar(
+        select(Admin).where(
+            Admin.login_id == normalized_login_id,
+            Admin.id != admin.id,
+        )
+    )
+    if duplicate_admin:
+        return redirect("/account", error="이미 사용 중인 로그인 아이디입니다.")
+
+    if new_password or new_password_confirm:
+        if len(new_password) < 12:
+            return redirect("/account", error="새 비밀번호는 12자 이상이어야 합니다.")
+        if new_password != new_password_confirm:
+            return redirect("/account", error="새 비밀번호 확인이 일치하지 않습니다.")
+
+    login_id_changed = admin.login_id != normalized_login_id
+    password_changed = bool(new_password)
+    if not login_id_changed and not password_changed:
+        return redirect("/account", error="변경할 아이디 또는 새 비밀번호를 입력해 주세요.")
+
+    admin.login_id = normalized_login_id
+    if password_changed:
+        admin.password_hash = hash_password(new_password)
+    db.commit()
+
+    db.execute(delete(AdminSession).where(AdminSession.admin_id == admin.id))
+    db.commit()
+    raw_token, _ = create_session(db, admin)
+    response = redirect("/account", message="관리자 계정 정보를 변경했습니다.")
+    response.set_cookie(
+        "lunchcall_session",
+        raw_token,
+        max_age=settings.session_hours * 3600,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
     return response
 
 

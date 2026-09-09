@@ -20,7 +20,7 @@
       <a class="{{ 'active' if request.url.path.startswith('/history') else '' }}" href="/history">확정 이력</a>
     </nav>
     <div class="account">
-      <span>{{ admin.display_name }}</span>
+      <a class="account-link {{ 'active' if request.url.path.startswith('/account') else '' }}" href="/account">{{ admin.display_name }}</a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="text-button" type="submit">로그아웃</button>

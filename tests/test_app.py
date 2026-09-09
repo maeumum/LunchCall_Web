@@ -18,7 +18,7 @@ os.environ["SMS_MODE"] = "mock"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.database import engine  # noqa: E402
-from app.main import app  # noqa: E402
+from app.main import app, initialize_database  # noqa: E402
 
 
 def csrf_from(html: str) -> str:
@@ -176,6 +176,55 @@ def test_admin_meal_flow() -> None:
         assert "직원 목록에서 삭제했습니다" in deleted.text
         employee_list = client.get("/employees")
         assert f"/employees/{dashboard_employee_id.group(1)}/status" not in employee_list.text
+
+        account = client.get("/account")
+        assert account.status_code == 200
+        assert "계정 설정" in account.text
+        csrf = csrf_from(account.text)
+
+        wrong_password = client.post(
+            "/account",
+            data={
+                "csrf_token": csrf,
+                "login_id": "meal-admin",
+                "current_password": "wrong",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            follow_redirects=True,
+        )
+        assert "현재 비밀번호가 올바르지 않습니다" in wrong_password.text
+
+        updated_account = client.post(
+            "/account",
+            data={
+                "csrf_token": csrf,
+                "login_id": "meal-admin",
+                "current_password": "StrongPrototype123!",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            follow_redirects=True,
+        )
+        assert "관리자 계정 정보를 변경했습니다" in updated_account.text
+        assert 'value="meal-admin"' in updated_account.text
+
+        initialize_database()
+
+        csrf = csrf_from(updated_account.text)
+        client.post("/logout", data={"csrf_token": csrf}, follow_redirects=True)
+        old_login = client.post(
+            "/login",
+            data={"login_id": "admin", "password": "StrongPrototype123!"},
+            follow_redirects=True,
+        )
+        assert "아이디 또는 비밀번호가 올바르지 않습니다" in old_login.text
+        new_login = client.post(
+            "/login",
+            data={"login_id": "meal-admin", "password": "NewStrongPassword123!"},
+            follow_redirects=True,
+        )
+        assert "오늘의 식수" in new_login.text
 
 
 def teardown_module() -> None:
