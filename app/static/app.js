@@ -23,6 +23,8 @@ if (employeeEditDialog) {
   const nameInput = employeeEditDialog.querySelector("#edit-employee-name");
   const departmentSelect = employeeEditDialog.querySelector("#edit-employee-department");
   const phoneInput = employeeEditDialog.querySelector("#edit-employee-phone");
+  const statusSelect = employeeEditDialog.querySelector("#edit-employee-status");
+  const deleteButton = employeeEditDialog.querySelector("#edit-employee-delete");
 
   document.querySelectorAll("[data-employee-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -30,6 +32,11 @@ if (employeeEditDialog) {
       nameInput.value = button.dataset.employeeName;
       departmentSelect.value = button.dataset.employeeDepartment;
       phoneInput.value = button.dataset.employeePhone;
+      statusSelect.value = button.dataset.employeeStatus;
+      deleteButton.formAction = `/employees/${button.dataset.employeeId}/delete`;
+      deleteButton.onclick = () => confirm(
+        `${button.dataset.employeeName}님을 직원 목록에서 삭제할까요? 과거 기록은 유지됩니다.`,
+      );
       formatPhoneInput(phoneInput);
       employeeEditDialog.showModal();
       nameInput.focus();

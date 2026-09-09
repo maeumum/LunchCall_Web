@@ -321,6 +321,7 @@ def employee_edit(
     name: str = Form(...),
     department: str = Form(...),
     phone: str = Form(""),
+    status: str = Form(...),
     db: Session = Depends(get_db),
 ):
     session = require_auth(request, db)
@@ -334,6 +335,8 @@ def employee_edit(
         return redirect("/employees", error="직원 이름을 입력해 주세요.")
     if department not in settings.departments:
         return redirect("/employees", error="목록에 있는 부서를 선택해 주세요.")
+    if status not in {"ACTIVE", "LEAVE", "RETIRED"}:
+        return redirect("/employees", error="올바른 재직 상태를 선택해 주세요.")
     try:
         normalized_phone = normalize_phone(phone)
     except ValueError as exc:
@@ -342,6 +345,7 @@ def employee_edit(
     employee.name = normalized_name
     employee.department = department
     employee.phone = normalized_phone
+    employee.status = status
     db.commit()
     return redirect("/employees", message=f"{employee.name}님의 정보를 수정했습니다.")
 

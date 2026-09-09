@@ -107,6 +107,7 @@ def test_admin_meal_flow() -> None:
                 "name": "김길동",
                 "department": "교육운영홍보팀",
                 "phone": "010123456789",
+                "status": "ACTIVE",
             },
             follow_redirects=True,
         )
@@ -119,6 +120,7 @@ def test_admin_meal_flow() -> None:
                 "name": "김길동",
                 "department": "교육운영홍보팀",
                 "phone": "01087654321",
+                "status": "ACTIVE",
             },
             follow_redirects=True,
         )
