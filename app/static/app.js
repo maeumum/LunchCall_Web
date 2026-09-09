@@ -97,3 +97,58 @@ if (employeeSearchInput) {
     filterEmployees();
   });
 }
+
+const mealSearchInput = document.querySelector("[data-meal-search]");
+
+if (mealSearchInput) {
+  const mealSearchForm = document.querySelector("[data-meal-search-form]");
+  const mealFilterButtons = Array.from(
+    document.querySelectorAll("[data-meal-filter-value]"),
+  );
+  const mealEmployeeRows = Array.from(
+    document.querySelectorAll("[data-meal-employee]"),
+  );
+  const mealResultCount = document.querySelector("[data-meal-result-count]");
+  const mealNoResults = document.querySelector("[data-meal-no-results]");
+  let activeMealFilter = "ALL";
+
+  const filterMealEmployees = () => {
+    const query = mealSearchInput.value.trim().toLocaleLowerCase("ko-KR");
+    let visibleCount = 0;
+
+    mealEmployeeRows.forEach((row) => {
+      const searchText = row.dataset.searchText.toLocaleLowerCase("ko-KR");
+      const matchesQuery = searchText.includes(query);
+      const matchesStatus =
+        activeMealFilter === "ALL" || row.dataset.mealStatus === activeMealFilter;
+      const isVisible = matchesQuery && matchesStatus;
+      row.hidden = !isVisible;
+      if (isVisible) visibleCount += 1;
+    });
+
+    const hasFilter = query || activeMealFilter !== "ALL";
+    mealResultCount.textContent = hasFilter
+      ? `검색 결과 ${visibleCount}명`
+      : `전체 ${mealEmployeeRows.length}명`;
+    mealNoResults.hidden = visibleCount !== 0;
+  };
+
+  mealSearchInput.addEventListener("input", filterMealEmployees);
+  mealSearchInput.addEventListener("compositionend", filterMealEmployees);
+  mealSearchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    filterMealEmployees();
+  });
+
+  mealFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeMealFilter = button.dataset.mealFilterValue;
+      mealFilterButtons.forEach((filterButton) => {
+        const isActive = filterButton === button;
+        filterButton.classList.toggle("active", isActive);
+        filterButton.setAttribute("aria-pressed", String(isActive));
+      });
+      filterMealEmployees();
+    });
+  });
+}

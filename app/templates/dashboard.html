@@ -25,9 +25,21 @@
       <span class="count-badge">{{ summary.employees|length }}명</span>
     </div>
     {% if summary.employees %}
+    <div class="meal-toolbar">
+      <form class="meal-search" data-meal-search-form role="search">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" data-meal-search placeholder="이름 또는 부서 검색" autocomplete="off" aria-label="오늘의 식수 직원 검색">
+      </form>
+      <div class="meal-filter" data-meal-filter aria-label="식사 상태 필터">
+        <button class="active" type="button" data-meal-filter-value="ALL" aria-pressed="true">전체</button>
+        <button type="button" data-meal-filter-value="MEAL" aria-pressed="false">식사</button>
+        <button type="button" data-meal-filter-value="ABSENT" aria-pressed="false">불참</button>
+      </div>
+      <span class="meal-result-count" data-meal-result-count aria-live="polite">전체 {{ summary.employees|length }}명</span>
+    </div>
     <div class="employee-grid">
       {% for employee in summary.employees %}
-      <form method="post" action="/absences/{{ employee.id }}/toggle">
+      <form method="post" action="/absences/{{ employee.id }}/toggle" data-meal-employee data-search-text="{{ employee.name }} {{ employee.department or '' }}" data-meal-status="{{ 'ABSENT' if employee.id in summary.absent_ids else 'MEAL' }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="employee-card {{ 'is-absent' if employee.id in summary.absent_ids else '' }}" type="submit" {% if daily.status == 'CONFIRMED' or holiday %}disabled{% endif %}>
           <span class="avatar">{{ employee.name[0] }}</span>
@@ -36,6 +48,10 @@
         </button>
       </form>
       {% endfor %}
+      <div class="meal-no-results" data-meal-no-results hidden>
+        <strong>조건에 맞는 직원이 없습니다.</strong>
+        <p>검색어나 식사 상태 필터를 변경해 주세요.</p>
+      </div>
     </div>
     {% else %}
     <div class="empty-state"><strong>재직 직원이 없습니다.</strong><p>직원 관리에서 첫 직원을 추가해 주세요.</p><a class="secondary" href="/employees">직원 추가하기</a></div>
@@ -68,6 +84,12 @@
       <p class="fine-print">확정 후에는 불참자와 식사 인원을 수정할 수 없습니다.</p>
       {% else %}
       <div class="confirmed-box"><strong>확정 완료</strong><span>{{ daily.confirmed_at.strftime('%H:%M') if daily.confirmed_at else '' }} · {{ daily.confirmer.display_name if daily.confirmer else '관리자' }}</span></div>
+      {% if settings.app_env == 'development' and settings.sms_mode == 'mock' %}
+      <form class="prototype-reset-form" method="post" action="/prototype/reset-today" onsubmit="return confirm('오늘의 확정과 모의 SMS 이력을 초기화할까요? 불참 선택은 유지됩니다.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="prototype-reset-button" type="submit">목업 확정 초기화</button>
+      </form>
+      {% endif %}
       {% endif %}
     </article>
 

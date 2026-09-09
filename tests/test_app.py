@@ -137,6 +137,10 @@ def test_admin_meal_flow() -> None:
 
         dashboard = client.get("/")
         assert "김길동" in dashboard.text
+        assert "data-meal-search-form" in dashboard.text
+        assert 'data-meal-filter-value="MEAL"' in dashboard.text
+        assert 'data-meal-filter-value="ABSENT"' in dashboard.text
+        assert 'data-meal-status="MEAL"' in dashboard.text
         csrf = csrf_from(dashboard.text)
         dashboard_employee_id = re.search(r"/absences/(\d+)/toggle", dashboard.text)
         assert dashboard_employee_id
@@ -148,6 +152,7 @@ def test_admin_meal_flow() -> None:
         )
         assert "식사 상태를 변경했습니다" in toggled.text
         assert "명이 식사합니다" in toggled.text
+        assert 'data-meal-status="ABSENT"' in toggled.text
 
         csrf = csrf_from(toggled.text)
         confirmed = client.post(
@@ -168,6 +173,17 @@ def test_admin_meal_flow() -> None:
         assert "이미 확정된 식수입니다" in duplicate.text
 
         csrf = csrf_from(duplicate.text)
+        reset_today = client.post(
+            "/prototype/reset-today",
+            data={"csrf_token": csrf},
+            follow_redirects=True,
+        )
+        assert "오늘의 목업 확정을 초기화했습니다" in reset_today.text
+        assert "불참 선택은 유지됩니다" in reset_today.text
+        assert 'data-meal-status="ABSENT"' in reset_today.text
+        assert "아직 발송 내역이 없습니다" in reset_today.text
+
+        csrf = csrf_from(reset_today.text)
         deleted = client.post(
             f"/employees/{dashboard_employee_id.group(1)}/delete",
             data={"csrf_token": csrf},

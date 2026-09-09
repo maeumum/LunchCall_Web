@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 import httpx
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -166,6 +166,22 @@ def retry_failed_sms(db: Session, daily: DailyMeal) -> SmsLog:
     return send_sms(db, daily, latest.attempt_number + 1)
 
 
+def reset_mock_confirmation(db: Session, daily: DailyMeal) -> None:
+    if settings.app_env != "development" or settings.sms_mode != "mock":
+        raise BusinessRuleError("목업 환경에서만 오늘 확정을 초기화할 수 있습니다.")
+    if daily.status != "CONFIRMED":
+        raise BusinessRuleError("오늘은 아직 확정되지 않았습니다.")
+
+    db.execute(delete(SmsLog).where(SmsLog.daily_meal_id == daily.id))
+    daily.status = "DRAFT"
+    daily.active_count = None
+    daily.absent_count = None
+    daily.meal_count = None
+    daily.confirmed_by = None
+    daily.confirmed_at = None
+    db.commit()
+
+
 def sync_holidays(db: Session, year: int) -> int:
     if not settings.holiday_api_key:
         raise BusinessRuleError("HOLIDAY_API_KEY가 설정되지 않았습니다.")
@@ -206,4 +222,3 @@ def sync_holidays(db: Session, year: int) -> int:
         count += 1
     db.commit()
     return count
-

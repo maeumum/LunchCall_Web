@@ -24,6 +24,7 @@ from .services import (
     get_or_create_daily_meal,
     holiday_name,
     meal_summary,
+    reset_mock_confirmation,
     retry_failed_sms,
     seoul_now,
     sync_holidays,
@@ -313,6 +314,25 @@ def retry_sms(
             "/",
             message="문자를 다시 전송했습니다." if log.status == "SUCCESS" else None,
             error="문자 재전송에 실패했습니다." if log.status == "FAILED" else None,
+        )
+    except BusinessRuleError as exc:
+        return redirect("/", error=str(exc))
+
+
+@app.post("/prototype/reset-today")
+def prototype_reset_today(
+    request: Request,
+    csrf_token: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    daily = get_or_create_daily_meal(db, seoul_now().date())
+    try:
+        reset_mock_confirmation(db, daily)
+        return redirect(
+            "/",
+            message="오늘의 목업 확정을 초기화했습니다. 불참 선택은 유지됩니다.",
         )
     except BusinessRuleError as exc:
         return redirect("/", error=str(exc))
