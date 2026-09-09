@@ -20,6 +20,13 @@
     </div>
 
     {% if employees %}
+    <div class="employee-toolbar">
+      <form class="employee-search" data-employee-search-form role="search">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" data-employee-search placeholder="이름, 부서 또는 연락처 검색" autocomplete="off" aria-label="직원 검색">
+      </form>
+      <span class="search-result-count" data-employee-result-count aria-live="polite">전체 {{ employees|length }}명</span>
+    </div>
     <div class="table-wrap">
       <table class="employee-table">
         <thead>
@@ -27,7 +34,7 @@
         </thead>
         <tbody>
           {% for employee in employees %}
-          <tr>
+          <tr data-employee-row data-search-text="{{ employee.name }} {{ employee.department or '' }} {{ employee.phone or '' }}">
             <td><strong>{{ employee.name }}</strong></td>
             <td>{{ employee.department or '-' }}</td>
             <td>{{ employee.phone or '-' }}</td>
@@ -50,6 +57,9 @@
             </td>
           </tr>
           {% endfor %}
+          <tr class="table-empty-row" data-employee-no-results hidden>
+            <td colspan="5">검색 조건에 맞는 직원이 없습니다.</td>
+          </tr>
         </tbody>
       </table>
     </div>

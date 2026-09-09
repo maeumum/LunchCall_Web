@@ -54,3 +54,36 @@ if (employeeEditDialog) {
     }
   });
 }
+
+const employeeSearchInput = document.querySelector("[data-employee-search]");
+
+if (employeeSearchInput) {
+  const searchForm = document.querySelector("[data-employee-search-form]");
+  const employeeRows = Array.from(document.querySelectorAll("[data-employee-row]"));
+  const resultCount = document.querySelector("[data-employee-result-count]");
+  const noResultsRow = document.querySelector("[data-employee-no-results]");
+
+  const filterEmployees = () => {
+    const query = employeeSearchInput.value.trim().toLocaleLowerCase("ko-KR");
+    let visibleCount = 0;
+
+    employeeRows.forEach((row) => {
+      const searchText = row.dataset.searchText.toLocaleLowerCase("ko-KR");
+      const isVisible = searchText.includes(query);
+      row.hidden = !isVisible;
+      if (isVisible) visibleCount += 1;
+    });
+
+    resultCount.textContent = query
+      ? `검색 결과 ${visibleCount}명`
+      : `전체 ${employeeRows.length}명`;
+    noResultsRow.hidden = visibleCount !== 0;
+  };
+
+  employeeSearchInput.addEventListener("input", filterEmployees);
+  employeeSearchInput.addEventListener("compositionend", filterEmployees);
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    filterEmployees();
+  });
+}
