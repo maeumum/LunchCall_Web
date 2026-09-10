@@ -50,6 +50,8 @@ def test_admin_meal_flow() -> None:
         )
         assert login.status_code == 200
         assert "오늘의 식수" in login.text
+        assert 'href="/settings"' in login.text
+        assert '>설정</a>' in login.text
         csrf = csrf_from(login.text)
 
         settings_page = client.get("/settings")
