@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ status_code }} · LunchCall{% endblock %}
+{% block main_class %}error-page-shell{% endblock %}
+{% block content %}
+<section class="error-page" role="alert" aria-labelledby="error-title">
+  <div class="error-code" aria-hidden="true">{{ status_code }}</div>
+  <span class="eyebrow">SOMETHING WENT WRONG</span>
+  <h1 id="error-title">{{ error_title }}</h1>
+  <p>{{ error_description }}</p>
+  <div class="error-actions">
+    <a class="primary" href="{{ home_href }}">{{ home_label }}</a>
+    <button class="secondary" type="button" onclick="history.back()">이전 화면</button>
+  </div>
+  <small>같은 문제가 계속되면 관리자에게 오류 코드 {{ status_code }}을 알려주세요.</small>
+</section>
+{% endblock %}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date
+import logging
 from pathlib import Path
 import re
 from urllib.parse import quote
@@ -13,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import settings
 from .database import Base, SessionLocal, engine, get_db
@@ -34,6 +36,7 @@ from .services import (
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+logger = logging.getLogger(__name__)
 
 
 def initialize_database() -> None:
@@ -75,6 +78,7 @@ def require_auth(request: Request, db: Session):
     session = get_session(db, request.cookies.get("lunchcall_session"))
     if not session:
         raise HTTPException(status_code=401)
+    request.state.auth_session = session
     return session
 
 
@@ -95,6 +99,79 @@ def normalize_phone(phone: str) -> str | None:
 @app.exception_handler(401)
 async def unauthorized_handler(_: Request, __: HTTPException):
     return RedirectResponse("/login", status_code=303)
+
+
+def render_error_page(request: Request, status_code: int):
+    error_content = {
+        400: (
+            "요청을 처리할 수 없습니다",
+            "입력한 내용이나 요청 형식을 확인한 뒤 다시 시도해 주세요.",
+        ),
+        403: (
+            "요청을 확인해 주세요",
+            "페이지가 오래 열려 있었거나 유효하지 않은 요청입니다. 화면을 새로 연 뒤 다시 시도해 주세요.",
+        ),
+        404: (
+            "페이지를 찾을 수 없습니다",
+            "주소가 변경되었거나 존재하지 않는 페이지입니다.",
+        ),
+    }
+    title, description = error_content.get(
+        status_code,
+        (
+            "잠시 문제가 발생했습니다",
+            "요청을 처리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+    )
+
+    auth_session = getattr(request.state, "auth_session", None)
+    if auth_session is None and status_code < 500:
+        try:
+            with SessionLocal() as db:
+                auth_session = get_session(
+                    db, request.cookies.get("lunchcall_session")
+                )
+                if auth_session:
+                    admin = auth_session.admin
+                    csrf_token = auth_session.csrf_token
+                else:
+                    admin = None
+                    csrf_token = None
+        except Exception:
+            admin = None
+            csrf_token = None
+    else:
+        admin = auth_session.admin if auth_session else None
+        csrf_token = auth_session.csrf_token if auth_session else None
+
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {
+            "admin": admin,
+            "csrf_token": csrf_token,
+            "status_code": status_code,
+            "error_title": title,
+            "error_description": description,
+            "home_href": "/" if admin else "/login",
+            "home_label": "오늘의 식수로 이동" if admin else "로그인 화면으로 이동",
+        },
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_handler(request: Request, exc: StarletteHTTPException):
+    return render_error_page(request, exc.status_code)
+
+
+@app.exception_handler(Exception)
+async def unexpected_error_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled application error",
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return render_error_page(request, 500)
 
 
 @app.get("/health")

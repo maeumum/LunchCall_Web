@@ -54,6 +54,18 @@ def test_admin_meal_flow() -> None:
         assert '>설정</a>' in login.text
         csrf = csrf_from(login.text)
 
+        missing_page = client.get("/not-a-page")
+        assert missing_page.status_code == 404
+        assert "페이지를 찾을 수 없습니다" in missing_page.text
+        assert "오늘의 식수로 이동" in missing_page.text
+
+        invalid_request = client.post(
+            "/logout", data={"csrf_token": "invalid-token"}
+        )
+        assert invalid_request.status_code == 403
+        assert "요청을 확인해 주세요" in invalid_request.text
+        assert "오류 코드 403" in invalid_request.text
+
         settings_page = client.get("/settings")
         assert settings_page.status_code == 200
         assert "기본 설정" in settings_page.text
