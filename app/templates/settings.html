@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}설정 · LunchCall{% endblock %}
+{% block content %}
+<section class="page-heading settings-heading">
+  <div>
+    <span class="eyebrow">SETTINGS</span>
+    <h1>설정</h1>
+    <p>서비스 운영과 관리자 계정 정보를 관리합니다.</p>
+  </div>
+</section>
+
+<section class="settings-layout">
+  <nav class="settings-nav" aria-label="설정 메뉴">
+    <a class="{{ 'active' if active_section == 'general' else '' }}" href="/settings?section=general"><span>기본 설정</span><small>회사와 운영 기준</small></a>
+    <a class="{{ 'active' if active_section == 'sms' else '' }}" href="/settings?section=sms"><span>SMS 설정</span><small>수신 번호와 문구</small></a>
+    <a class="{{ 'active' if active_section == 'departments' else '' }}" href="/settings?section=departments"><span>부서 관리</span><small>부서 목록과 인원</small></a>
+    <a class="{{ 'active' if active_section == 'holidays' else '' }}" href="/settings?section=holidays"><span>공휴일</span><small>휴일 데이터 연동</small></a>
+    <a class="{{ 'active' if active_section == 'account' else '' }}" href="/settings?section=account"><span>관리자 계정</span><small>아이디와 비밀번호</small></a>
+  </nav>
+
+  <div class="settings-content">
+    {% if active_section == 'general' %}
+    <article class="panel settings-panel">
+      <div class="panel-heading">
+        <div><h2>기본 설정</h2><p>서비스에서 공통으로 사용하는 정보입니다.</p></div>
+        <span class="prototype-label">화면 설계</span>
+      </div>
+      <div class="stack-form settings-form">
+        <label>회사명 <b>*</b>
+          <input value="{{ settings.sms_company_name }}" maxlength="30" data-settings-company>
+          <small class="field-help">SMS 발송 문구에 표시되는 회사명입니다.</small>
+        </label>
+        <label>기준 시간대
+          <input value="Asia/Seoul" readonly>
+          <small class="field-help">식수 확정과 공휴일 판별은 한국 시간을 기준으로 합니다.</small>
+        </label>
+        <button class="primary settings-save" type="button" disabled>DB 연결 후 저장 가능</button>
+      </div>
+    </article>
+
+    {% elif active_section == 'sms' %}
+    <article class="panel settings-panel">
+      <div class="panel-heading">
+        <div><h2>SMS 설정</h2><p>식당 수신 번호와 발송 문구를 구성합니다.</p></div>
+        <span class="prototype-label">화면 설계</span>
+      </div>
+      <div class="settings-split">
+        <div class="stack-form settings-form">
+          <label>회사명 <b>*</b>
+            <input value="{{ settings.sms_company_name }}" maxlength="30" data-sms-company>
+          </label>
+          <label>식당 수신 번호 <b>*</b>
+            <input value="{{ settings.sms_recipient }}" type="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}" data-phone-input data-sms-recipient>
+          </label>
+          <label>문자 템플릿 <b>*</b>
+            <textarea rows="4" data-sms-template>[{company_name}] {date} 식사 인원은 {meal_count}명입니다.</textarea>
+            <small class="field-help">{company_name}, {date}, {meal_count}, {absent_count} 변수를 사용할 수 있습니다.</small>
+          </label>
+          <button class="primary settings-save" type="button" disabled>DB 연결 후 저장 가능</button>
+        </div>
+        <aside class="settings-preview-card" data-sms-preview data-preview-date="{{ preview_date.year }}년 {{ preview_date.month }}월 {{ preview_date.day }}일">
+          <span class="eyebrow">MESSAGE PREVIEW</span>
+          <h3>발송 미리보기</h3>
+          <div class="preview-recipient"><span>수신</span><strong data-sms-preview-recipient>{{ settings.sms_recipient }}</strong></div>
+          <div class="preview-message" data-sms-preview-message>[{{ settings.sms_company_name }}] {{ preview_date.year }}년 {{ preview_date.month }}월 {{ preview_date.day }}일 식사 인원은 17명입니다.</div>
+          <div class="preview-meta"><span>예시 식사 17명 · 불참 3명</span><span data-sms-length></span></div>
+        </aside>
+      </div>
+    </article>
+
+    {% elif active_section == 'departments' %}
+    <article class="panel settings-panel">
+      <div class="panel-heading">
+        <div><h2>부서 관리</h2><p>직원 등록과 필터에 사용하는 부서 목록입니다.</p></div>
+        <span class="prototype-label">화면 설계</span>
+      </div>
+      <div class="department-settings-list">
+        {% for department in departments %}
+        <div class="department-setting-row">
+          <div><strong>{{ department }}</strong><small>{{ department_counts.get(department, 0) }}명 소속</small></div>
+          <button class="small-button edit" type="button" disabled>관리</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="secondary department-add-button" type="button" disabled>+ 부서 추가</button>
+      <p class="settings-notice">부서 저장 기능은 departments 테이블을 추가하는 백엔드 단계에서 연결합니다.</p>
+    </article>
+
+    {% elif active_section == 'holidays' %}
+    <article class="panel settings-panel">
+      <div class="panel-heading"><div><h2>공휴일</h2><p>한국천문연구원 특일 정보 API 연동 상태입니다.</p></div></div>
+      <div class="holiday-status-grid">
+        <div><span>API 설정</span><strong>{{ '연결 키 설정됨' if settings.holiday_api_key else '인증키 필요' }}</strong></div>
+        <div><span>저장된 공휴일</span><strong>{{ holiday_count }}일</strong></div>
+        <div><span>마지막 동기화</span><strong>{{ last_holiday_sync.strftime('%Y.%m.%d %H:%M') if last_holiday_sync else '동기화 전' }}</strong></div>
+      </div>
+      <form method="post" action="/holidays/sync">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="return_to" value="/settings?section=holidays">
+        <button class="primary" type="submit" {% if not settings.holiday_api_key %}disabled{% endif %}>올해 공휴일 동기화</button>
+      </form>
+      {% if not settings.holiday_api_key %}<p class="settings-notice">서버 환경 변수에 HOLIDAY_API_KEY를 설정하면 동기화할 수 있습니다.</p>{% endif %}
+    </article>
+
+    {% elif active_section == 'account' %}
+    <article class="panel settings-panel account-form-panel">
+      <div class="panel-heading">
+        <div><h2>관리자 계정</h2><p>변경을 저장하려면 현재 비밀번호를 확인해야 합니다.</p></div>
+      </div>
+      <form class="stack-form account-form" method="post" action="/account">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label>로그인 아이디 <b>*</b>
+          <input name="login_id" value="{{ admin.login_id }}" minlength="3" maxlength="40" pattern="[A-Za-z0-9._-]{3,40}" autocomplete="username" required>
+          <small class="field-help">영문, 숫자, 마침표, 밑줄, 하이픈을 사용할 수 있습니다.</small>
+        </label>
+        <div class="form-divider"><span>비밀번호 변경</span></div>
+        <label>새 비밀번호
+          <input name="new_password" type="password" minlength="12" autocomplete="new-password" placeholder="변경하지 않으려면 비워두세요">
+          <small class="field-help">12자 이상 입력해 주세요.</small>
+        </label>
+        <label>새 비밀번호 확인
+          <input name="new_password_confirm" type="password" minlength="12" autocomplete="new-password" placeholder="새 비밀번호를 다시 입력하세요">
+        </label>
+        <div class="form-divider"><span>본인 확인</span></div>
+        <label>현재 비밀번호 <b>*</b>
+          <input name="current_password" type="password" autocomplete="current-password" placeholder="현재 비밀번호를 입력하세요" required>
+        </label>
+        <button class="primary account-submit" type="submit">계정 정보 변경</button>
+      </form>
+      <div class="account-security-note">
+        계정 정보를 변경하면 다른 브라우저의 기존 로그인 세션은 종료됩니다.
+      </div>
+    </article>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

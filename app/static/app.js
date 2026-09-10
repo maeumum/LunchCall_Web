@@ -177,3 +177,43 @@ if (confirmSmsDialog) {
     submitButton.textContent = "전송 중...";
   });
 }
+
+document.querySelectorAll("[data-history-open]").forEach((button) => {
+  const dialog = document.querySelector(`#${button.dataset.historyOpen}`);
+  if (!dialog) return;
+
+  button.addEventListener("click", () => dialog.showModal());
+  dialog.querySelectorAll("[data-history-close]").forEach((closeButton) => {
+    closeButton.addEventListener("click", () => dialog.close());
+  });
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+});
+
+const smsSettingsPreview = document.querySelector("[data-sms-preview]");
+
+if (smsSettingsPreview) {
+  const companyInput = document.querySelector("[data-sms-company]");
+  const recipientInput = document.querySelector("[data-sms-recipient]");
+  const templateInput = document.querySelector("[data-sms-template]");
+  const messagePreview = document.querySelector("[data-sms-preview-message]");
+  const recipientPreview = document.querySelector("[data-sms-preview-recipient]");
+  const lengthPreview = document.querySelector("[data-sms-length]");
+
+  const updateSmsPreview = () => {
+    const message = templateInput.value
+      .replaceAll("{company_name}", companyInput.value.trim() || "회사명")
+      .replaceAll("{date}", smsSettingsPreview.dataset.previewDate)
+      .replaceAll("{meal_count}", "17")
+      .replaceAll("{absent_count}", "3");
+    messagePreview.textContent = message;
+    recipientPreview.textContent = recipientInput.value || "수신 번호 미입력";
+    lengthPreview.textContent = `${message.length}자`;
+  };
+
+  [companyInput, recipientInput, templateInput].forEach((input) => {
+    input.addEventListener("input", updateSmsPreview);
+  });
+  updateSmsPreview();
+}

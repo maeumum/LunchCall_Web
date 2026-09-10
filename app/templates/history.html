@@ -1,10 +1,144 @@
 {% extends "base.html" %}
 {% block title %}확정 이력 · LunchCall{% endblock %}
 {% block content %}
-<section class="page-heading"><div><span class="eyebrow">HISTORY</span><h1>확정 이력</h1><p>확정 당시의 인원과 문자 발송 결과를 확인합니다.</p></div></section>
+<section class="page-heading">
+  <div>
+    <span class="eyebrow">HISTORY</span>
+    <h1>확정 이력</h1>
+    <p>확정 당시의 인원과 문자 발송 결과를 확인합니다.</p>
+  </div>
+</section>
+
 <article class="panel">
-  {% if meals %}<div class="history-list">{% for meal in meals %}<div class="history-card"><div class="history-date"><strong>{{ meal.meal_date.month }}월 {{ meal.meal_date.day }}일</strong><span>{{ meal.confirmed_at.strftime('%Y.%m.%d %H:%M') if meal.confirmed_at else '' }}</span></div><div class="history-numbers"><span>재직 <b>{{ meal.active_count }}</b></span><span>불참 <b>{{ meal.absent_count }}</b></span><span class="accent">식사 <b>{{ meal.meal_count }}</b></span></div><div class="history-sms">{% if meal.sms_logs %}{% set log = meal.sms_logs|sort(attribute='attempt_number')|last %}<span class="employee-status {{ 'active' if log.status == 'SUCCESS' else 'retired' }}">{{ '발송 성공' if log.status == 'SUCCESS' else '발송 실패' }}</span>{% else %}<span class="employee-status leave">미발송</span>{% endif %}</div></div>{% endfor %}</div>
-  {% else %}<div class="empty-state"><strong>아직 확정 이력이 없습니다.</strong><p>오늘의 식수를 확정하면 이곳에 기록됩니다.</p></div>{% endif %}
+  {% if meals %}
+  <div class="history-list">
+    {% for meal in meals %}
+    {% set sorted_logs = meal.sms_logs|sort(attribute='attempt_number') %}
+    <div class="history-card">
+      <div class="history-date">
+        <strong>{{ meal.meal_date.month }}월 {{ meal.meal_date.day }}일</strong>
+        <span>{{ meal.confirmed_at.strftime('%Y.%m.%d %H:%M') if meal.confirmed_at else '' }}</span>
+      </div>
+      <div class="history-numbers">
+        <span>재직 <b>{{ meal.active_count }}</b></span>
+        <span>불참 <b>{{ meal.absent_count }}</b></span>
+        <span class="accent">식사 <b>{{ meal.meal_count }}</b></span>
+      </div>
+      <div class="history-actions">
+        <div class="history-sms">
+          {% if sorted_logs %}
+          {% set latest_log = sorted_logs|last %}
+          <span class="employee-status {{ 'active' if latest_log.status == 'SUCCESS' else 'retired' }}">
+            {{ '발송 성공' if latest_log.status == 'SUCCESS' else '발송 실패' }}
+          </span>
+          {% else %}
+          <span class="employee-status leave">미발송</span>
+          {% endif %}
+        </div>
+        <button class="history-detail-button" type="button" data-history-open="history-detail-{{ meal.id }}">상세 보기</button>
+      </div>
+    </div>
+
+    <dialog class="modal history-detail-modal" id="history-detail-{{ meal.id }}" data-history-dialog aria-labelledby="history-title-{{ meal.id }}">
+      <div class="modal-card">
+        <div class="modal-heading">
+          <div>
+            <span class="eyebrow">MEAL HISTORY</span>
+            <h2 id="history-title-{{ meal.id }}">{{ meal.meal_date.year }}년 {{ meal.meal_date.month }}월 {{ meal.meal_date.day }}일</h2>
+            <p>확정된 식수와 SMS 발송 기록입니다.</p>
+          </div>
+          <button class="modal-close" type="button" data-history-close aria-label="상세 이력 닫기">×</button>
+        </div>
+
+        <div class="history-detail-status">
+          {% if sorted_logs %}
+          {% set latest_log = sorted_logs|last %}
+          <span class="history-status-dot {{ latest_log.status|lower }}"></span>
+          <div>
+            <strong>{{ {'SUCCESS':'발송 성공','FAILED':'발송 실패','PENDING':'발송 대기','SENDING':'발송 중'}[latest_log.status] }}</strong>
+            <small>총 {{ sorted_logs|length }}회 발송 시도</small>
+          </div>
+          {% else %}
+          <span class="history-status-dot pending"></span>
+          <div><strong>미발송</strong><small>발송 기록이 없습니다.</small></div>
+          {% endif %}
+        </div>
+
+        <div class="confirm-counts history-detail-counts">
+          <div><span>재직</span><strong>{{ meal.active_count }}명</strong></div>
+          <div><span>불참</span><strong>{{ meal.absent_count }}명</strong></div>
+          <div class="highlight"><span>식사</span><strong>{{ meal.meal_count }}명</strong></div>
+        </div>
+
+        <section class="history-section">
+          <div class="history-section-heading"><h3>확정 정보</h3></div>
+          <dl class="history-definition-list">
+            <div><dt>확정 관리자</dt><dd>{{ meal.confirmer.display_name if meal.confirmer else '관리자' }}</dd></div>
+            <div><dt>확정 시각</dt><dd>{{ meal.confirmed_at.strftime('%Y.%m.%d %H:%M:%S') if meal.confirmed_at else '-' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="history-section">
+          <div class="history-section-heading"><h3>불참자</h3><span>{{ meal.absences|length }}명</span></div>
+          {% if meal.absences %}
+          <div class="absence-name-list">
+            {% for absence in meal.absences %}<span>{{ absence.employee_name_snapshot }}</span>{% endfor %}
+          </div>
+          {% else %}
+          <p class="history-empty-copy">불참자가 없습니다.</p>
+          {% endif %}
+        </section>
+
+        <section class="history-section">
+          <div class="history-section-heading"><h3>SMS 내용</h3></div>
+          {% if sorted_logs %}
+          {% set message_log = sorted_logs|first %}
+          <dl class="history-definition-list">
+            <div><dt>수신 번호</dt><dd>{{ message_log.recipient }}</dd></div>
+          </dl>
+          <div class="sms-preview history-message">
+            <span>실제 발송 문구</span>
+            <p>{{ message_log.message }}</p>
+          </div>
+          {% else %}
+          <p class="history-empty-copy">저장된 SMS 내용이 없습니다.</p>
+          {% endif %}
+        </section>
+
+        <section class="history-section">
+          <div class="history-section-heading"><h3>발송 시도</h3></div>
+          {% if sorted_logs %}
+          <div class="sms-attempt-list">
+            {% for log in sorted_logs %}
+            <article class="sms-attempt">
+              <span class="attempt-index">{{ log.attempt_number }}차</span>
+              <div class="attempt-copy">
+                <strong>{{ {'SUCCESS':'발송 성공','FAILED':'발송 실패','PENDING':'발송 대기','SENDING':'발송 중'}[log.status] }}</strong>
+                <small>{{ log.sent_at.strftime('%Y.%m.%d %H:%M:%S') if log.sent_at else log.created_at.strftime('%Y.%m.%d %H:%M:%S') }}</small>
+                {% if log.provider_message_id %}<small>메시지 ID: {{ log.provider_message_id }}</small>{% endif %}
+                {% if log.error_message %}<p>{{ log.error_message }}</p>{% endif %}
+              </div>
+              {% if log.provider_message_id and log.provider_message_id.startswith('mock-') %}<span class="mock-label">MOCK</span>{% endif %}
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="history-empty-copy">발송 시도 이력이 없습니다.</p>
+          {% endif %}
+        </section>
+
+        <div class="modal-actions history-modal-actions">
+          <button class="secondary" type="button" data-history-close>닫기</button>
+        </div>
+      </div>
+    </dialog>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <strong>아직 확정 이력이 없습니다.</strong>
+    <p>오늘의 식수를 확정하면 이곳에 기록됩니다.</p>
+  </div>
+  {% endif %}
 </article>
 {% endblock %}
-

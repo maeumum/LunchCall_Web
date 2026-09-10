@@ -63,10 +63,11 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 def redirect(path: str, message: str | None = None, error: str | None = None):
     query = ""
+    separator = "&" if "?" in path else "?"
     if message:
-        query = f"?message={quote(message)}"
+        query = f"{separator}message={quote(message)}"
     elif error:
-        query = f"?error={quote(error)}"
+        query = f"{separator}error={quote(error)}"
     return RedirectResponse(f"{path}{query}", status_code=303)
 
 
@@ -151,15 +152,43 @@ def logout(
 
 @app.get("/account", response_class=HTMLResponse)
 def account_page(request: Request, db: Session = Depends(get_db)):
+    require_auth(request, db)
+    return RedirectResponse("/settings?section=account", status_code=303)
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request,
+    section: str = "general",
+    db: Session = Depends(get_db),
+):
     session = require_auth(request, db)
+    allowed_sections = {"general", "sms", "departments", "holidays", "account"}
+    active_section = section if section in allowed_sections else "general"
+    department_rows = db.execute(
+        select(Employee.department, func.count(Employee.id))
+        .where(Employee.status != "DELETED")
+        .group_by(Employee.department)
+    ).all()
+    department_counts = {department: count for department, count in department_rows}
+    holiday_count = db.scalar(select(func.count(Holiday.id))) or 0
+    last_holiday_sync = db.scalar(select(func.max(Holiday.synced_at)))
+
     return templates.TemplateResponse(
         request,
-        "account.html",
+        "settings.html",
         {
             "admin": session.admin,
             "csrf_token": session.csrf_token,
+            "active_section": active_section,
+            "departments": settings.departments,
+            "department_counts": department_counts,
+            "holiday_count": holiday_count,
+            "last_holiday_sync": last_holiday_sync,
+            "preview_date": seoul_now(),
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
+            "settings": settings,
         },
     )
 
@@ -177,14 +206,15 @@ def account_update(
     session = require_auth(request, db)
     require_csrf(session, csrf_token)
     admin = session.admin
+    account_path = "/settings?section=account"
 
     if not verify_password(admin.password_hash, current_password):
-        return redirect("/account", error="현재 비밀번호가 올바르지 않습니다.")
+        return redirect(account_path, error="현재 비밀번호가 올바르지 않습니다.")
 
     normalized_login_id = login_id.strip()
     if not re.fullmatch(r"[A-Za-z0-9._-]{3,40}", normalized_login_id):
         return redirect(
-            "/account",
+            account_path,
             error="로그인 아이디는 영문, 숫자, 마침표, 밑줄, 하이픈으로 3~40자까지 입력해 주세요.",
         )
 
@@ -195,18 +225,18 @@ def account_update(
         )
     )
     if duplicate_admin:
-        return redirect("/account", error="이미 사용 중인 로그인 아이디입니다.")
+        return redirect(account_path, error="이미 사용 중인 로그인 아이디입니다.")
 
     if new_password or new_password_confirm:
         if len(new_password) < 12:
-            return redirect("/account", error="새 비밀번호는 12자 이상이어야 합니다.")
+            return redirect(account_path, error="새 비밀번호는 12자 이상이어야 합니다.")
         if new_password != new_password_confirm:
-            return redirect("/account", error="새 비밀번호 확인이 일치하지 않습니다.")
+            return redirect(account_path, error="새 비밀번호 확인이 일치하지 않습니다.")
 
     login_id_changed = admin.login_id != normalized_login_id
     password_changed = bool(new_password)
     if not login_id_changed and not password_changed:
-        return redirect("/account", error="변경할 아이디 또는 새 비밀번호를 입력해 주세요.")
+        return redirect(account_path, error="변경할 아이디 또는 새 비밀번호를 입력해 주세요.")
 
     admin.login_id = normalized_login_id
     if password_changed:
@@ -216,7 +246,7 @@ def account_update(
     db.execute(delete(AdminSession).where(AdminSession.admin_id == admin.id))
     db.commit()
     raw_token, _ = create_session(db, admin)
-    response = redirect("/account", message="관리자 계정 정보를 변경했습니다.")
+    response = redirect(account_path, message="관리자 계정 정보를 변경했습니다.")
     response.set_cookie(
         "lunchcall_session",
         raw_token,
@@ -502,12 +532,18 @@ def history(request: Request, db: Session = Depends(get_db)):
 def holidays_sync(
     request: Request,
     csrf_token: str = Form(...),
+    return_to: str = Form("/"),
     db: Session = Depends(get_db),
 ):
     session = require_auth(request, db)
     require_csrf(session, csrf_token)
+    redirect_path = (
+        return_to
+        if return_to in {"/", "/settings?section=holidays"}
+        else "/"
+    )
     try:
         count = sync_holidays(db, seoul_now().year)
-        return redirect("/", message=f"공휴일 {count}건을 동기화했습니다.")
+        return redirect(redirect_path, message=f"공휴일 {count}건을 동기화했습니다.")
     except (BusinessRuleError, httpx.HTTPError, ValueError, KeyError) as exc:
-        return redirect("/", error=f"공휴일 동기화 실패: {exc}")
+        return redirect(redirect_path, error=f"공휴일 동기화 실패: {exc}")

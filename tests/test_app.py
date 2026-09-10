@@ -52,6 +52,23 @@ def test_admin_meal_flow() -> None:
         assert "오늘의 식수" in login.text
         csrf = csrf_from(login.text)
 
+        settings_page = client.get("/settings")
+        assert settings_page.status_code == 200
+        assert "기본 설정" in settings_page.text
+        assert "SMS 설정" in settings_page.text
+        assert "부서 관리" in settings_page.text
+        assert "공휴일" in settings_page.text
+        assert "관리자 계정" in settings_page.text
+
+        sms_settings = client.get("/settings?section=sms")
+        assert "발송 미리보기" in sms_settings.text
+        assert "data-sms-template" in sms_settings.text
+        assert "data-sms-preview-message" in sms_settings.text
+
+        department_settings = client.get("/settings?section=departments")
+        assert "AISW연구개발팀" in department_settings.text
+        assert "부서 저장 기능" in department_settings.text
+
         holiday_sync = client.post(
             "/holidays/sync",
             data={"csrf_token": csrf},
@@ -170,6 +187,15 @@ def test_admin_meal_flow() -> None:
         history = client.get("/history")
         assert history.status_code == 200
         assert "발송 성공" in history.text
+        assert "data-history-open" in history.text
+        assert "확정 관리자" in history.text
+        assert "김길동" in history.text
+        assert "실제 발송 문구" in history.text
+        assert "010-0000-0000" in history.text
+        assert "식사 인원은 0명입니다" in history.text
+        assert "1차" in history.text
+        assert "MOCK" in history.text
+        assert "mock-" in history.text
 
         csrf = csrf_from(confirmed.text)
         duplicate = client.post(
@@ -200,7 +226,8 @@ def test_admin_meal_flow() -> None:
 
         account = client.get("/account")
         assert account.status_code == 200
-        assert "계정 설정" in account.text
+        assert "section=account" in str(account.url)
+        assert "관리자 계정" in account.text
         csrf = csrf_from(account.text)
 
         wrong_password = client.post(
