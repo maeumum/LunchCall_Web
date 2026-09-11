@@ -160,6 +160,46 @@ if (confirmSmsDialog) {
   const confirmForm = confirmSmsDialog.querySelector("[data-confirm-sms-form]");
   const submitButton = confirmSmsDialog.querySelector("[data-confirm-sms-submit]");
 
+  if (openButton.dataset.confirmTimeLocked === "true") {
+    const waitSeconds = Number(openButton.dataset.confirmWaitSeconds || 0);
+    const unlockAt = Date.now() + waitSeconds * 1000;
+    const timeNotice = document.querySelector("[data-confirm-time-notice]");
+
+    const updateConfirmationTime = () => {
+      const remainingSeconds = Math.max(0, Math.ceil((unlockAt - Date.now()) / 1000));
+      if (remainingSeconds === 0) {
+        openButton.dataset.confirmTimeLocked = "false";
+        if (openButton.dataset.confirmPermanentlyBlocked !== "true") {
+          openButton.disabled = false;
+        }
+        if (timeNotice) {
+          timeNotice.classList.remove("locked");
+          timeNotice.textContent = "지금부터 최종 확정할 수 있습니다.";
+        }
+        return true;
+      }
+
+      const hours = Math.floor(remainingSeconds / 3600);
+      const minutes = Math.floor((remainingSeconds % 3600) / 60);
+      const seconds = remainingSeconds % 60;
+      const remainingText = [
+        hours ? `${hours}시간` : "",
+        minutes ? `${minutes}분` : "",
+        `${seconds}초`,
+      ].filter(Boolean).join(" ");
+      if (timeNotice) {
+        timeNotice.textContent = `오전 9:50까지 ${remainingText} 남았습니다.`;
+      }
+      return false;
+    };
+
+    if (!updateConfirmationTime()) {
+      const confirmationTimer = window.setInterval(() => {
+        if (updateConfirmationTime()) window.clearInterval(confirmationTimer);
+      }, 1000);
+    }
+  }
+
   openButton.addEventListener("click", () => confirmSmsDialog.showModal());
 
   confirmSmsDialog.querySelectorAll("[data-confirm-sms-close]").forEach((button) => {

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import datetime
+import importlib
 import os
 import re
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 TEST_DB = Path(__file__).with_name("test_lunchcall.db")
 if TEST_DB.exists():
@@ -20,6 +24,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.database import engine  # noqa: E402
 from app.main import app, initialize_database  # noqa: E402
 
+main_module = importlib.import_module("app.main")
+
 
 def csrf_from(html: str) -> str:
     match = re.search(r'name="csrf_token" value="([^"]+)"', html)
@@ -34,7 +40,7 @@ def test_health() -> None:
         assert response.json()["status"] == "ok"
 
 
-def test_admin_meal_flow() -> None:
+def test_admin_meal_flow(monkeypatch) -> None:
     with TestClient(app) as client:
         failed = client.post(
             "/login",
@@ -176,6 +182,22 @@ def test_admin_meal_flow() -> None:
         assert "실제 발송 문구" in dashboard.text
         assert "010-0000-0000" in dashboard.text
         assert "식사 인원은 1명입니다" in dashboard.text
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(
+                main_module,
+                "settings",
+                replace(main_module.settings, allow_early_confirm=False),
+            )
+            patcher.setattr(
+                main_module,
+                "seoul_now",
+                lambda: datetime(2026, 9, 11, 9, 49, 30, tzinfo=ZoneInfo("Asia/Seoul")),
+            )
+            time_locked_dashboard = client.get("/")
+        assert 'data-confirm-time-locked="true"' in time_locked_dashboard.text
+        assert 'data-confirm-wait-seconds="30"' in time_locked_dashboard.text
+        assert "오전 9:50부터 확정할 수 있습니다" in time_locked_dashboard.text
         csrf = csrf_from(dashboard.text)
         dashboard_employee_id = re.search(r"/absences/(\d+)/toggle", dashboard.text)
         assert dashboard_employee_id

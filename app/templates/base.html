@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}LunchCall{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', path='/lunchcall-logo-active.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
   <script defer src="{{ url_for('static', path='/app.js') }}"></script>
 </head>
@@ -11,7 +12,7 @@
   {% if admin %}
   <header class="site-header">
     <a class="brand" href="/">
-      <span class="brand-mark">L</span>
+      <img class="brand-logo" src="{{ url_for('static', path='/lunchcall-logo-active.png') }}" alt="" width="42" height="42">
       <span>LunchCall</span>
     </a>
     <nav>

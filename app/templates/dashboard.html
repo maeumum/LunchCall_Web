@@ -75,8 +75,24 @@
         <div><dt>확정 가능</dt><dd>오전 9:50부터</dd></div>
       </dl>
       {% if daily.status == 'DRAFT' %}
-      <button class="primary wide" type="button" data-confirm-sms-open {% if holiday or not summary.employees %}disabled{% endif %}>최종 확정 및 문자 전송</button>
+      <button
+        class="primary wide"
+        type="button"
+        data-confirm-sms-open
+        data-confirm-time-locked="{{ 'true' if confirmation_time_locked else 'false' }}"
+        data-confirm-wait-seconds="{{ confirm_wait_seconds }}"
+        data-confirm-permanently-blocked="{{ 'true' if holiday or not summary.employees else 'false' }}"
+        {% if holiday or not summary.employees or confirmation_time_locked %}disabled{% endif %}
+      >최종 확정 및 문자 전송</button>
+      {% if holiday %}
+      <p class="fine-print">휴일에는 식수를 확정하거나 문자를 발송하지 않습니다.</p>
+      {% elif not summary.employees %}
+      <p class="fine-print">확정하려면 재직 직원을 먼저 추가해 주세요.</p>
+      {% elif confirmation_time_locked %}
+      <p class="fine-print confirm-time-notice locked" data-confirm-time-notice>오전 9:50부터 확정할 수 있습니다.</p>
+      {% else %}
       <p class="fine-print">확정 후에는 불참자와 식사 인원을 수정할 수 없습니다.</p>
+      {% endif %}
       {% else %}
       <div class="confirmed-box"><strong>확정 완료</strong><span>{{ daily.confirmed_at.strftime('%H:%M') if daily.confirmed_at else '' }} · {{ daily.confirmer.display_name if daily.confirmer else '관리자' }}</span></div>
       {% if settings.app_env == 'development' and settings.sms_mode == 'mock' %}

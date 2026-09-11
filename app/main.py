@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import date
 import logging
+from math import ceil
 from pathlib import Path
 import re
 from urllib.parse import quote
@@ -22,6 +23,7 @@ from .models import Admin, AdminSession, DailyMeal, Employee, Holiday, SmsLog
 from .security import create_session, delete_session, get_session, hash_password, verify_password
 from .services import (
     BusinessRuleError,
+    CONFIRM_TIME,
     build_sms_message,
     confirm_and_send,
     get_or_create_daily_meal,
@@ -339,6 +341,20 @@ def account_update(
 def dashboard(request: Request, db: Session = Depends(get_db)):
     session = require_auth(request, db)
     now = seoul_now()
+    confirm_opens_at = now.replace(
+        hour=CONFIRM_TIME.hour,
+        minute=CONFIRM_TIME.minute,
+        second=0,
+        microsecond=0,
+    )
+    confirmation_time_locked = (
+        not settings.allow_early_confirm and now < confirm_opens_at
+    )
+    confirm_wait_seconds = (
+        max(0, ceil((confirm_opens_at - now).total_seconds()))
+        if confirmation_time_locked
+        else 0
+    )
     daily = get_or_create_daily_meal(db, now.date())
     summary = meal_summary(db, daily)
     logs = list(
@@ -355,6 +371,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "admin": session.admin,
             "csrf_token": session.csrf_token,
             "now": now,
+            "confirmation_time_locked": confirmation_time_locked,
+            "confirm_wait_seconds": confirm_wait_seconds,
             "daily": daily,
             "summary": summary,
             "draft_absent_names": [
