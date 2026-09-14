@@ -52,3 +52,5 @@
 .inline-notice{padding:11px 13px;border-radius:9px;background:var(--green-soft);color:var(--green);font-size:12px;font-weight:600;line-height:1.55}
 
 .date-rollover-notice{position:fixed;top:84px;left:50%;z-index:20;transform:translateX(-50%);padding:11px 16px;border:1px solid #cfe4d9;border-radius:10px;background:var(--green-soft);color:var(--green);box-shadow:var(--shadow);font-size:12px;font-weight:700}.date-rollover-notice[hidden]{display:none}
+
+form[aria-busy="true"]{cursor:wait}form[aria-busy="true"] button:disabled{cursor:wait}

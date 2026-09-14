@@ -16,7 +16,7 @@
     {% if error %}<div class="inline-error" role="alert">{{ error }}</div>{% endif %}
     <label>로그인 아이디<input name="login_id" autocomplete="username" required autofocus></label>
     <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
-    <button class="primary wide" type="submit">로그인</button>
+    <button class="primary wide" type="submit" data-submitting-text="로그인 중...">로그인</button>
     {% if settings.app_env == 'development' %}
     <p class="demo-hint">프로토타입 계정: <code>{{ settings.admin_login_id }}</code> / 환경 변수의 ADMIN_PASSWORD</p>
     {% endif %}

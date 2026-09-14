@@ -117,7 +117,7 @@
       {% if settings.app_env == 'development' and settings.sms_mode == 'mock' %}
       <form class="prototype-reset-form" method="post" action="/prototype/reset-today" onsubmit="return confirm('오늘의 확정과 모의 SMS 이력을 초기화할까요? 불참 선택은 유지됩니다.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="prototype-reset-button" type="submit">목업 확정 초기화</button>
+        <button class="prototype-reset-button" type="submit" data-submitting-text="초기화 중...">목업 확정 초기화</button>
       </form>
       {% endif %}
       {% endif %}
@@ -128,13 +128,13 @@
       {% if logs %}
         {% set latest = logs[0] %}
         <div class="log-row"><span class="log-icon {{ latest.status|lower }}">{{ '✓' if latest.status == 'SUCCESS' else '!' }}</span><div><strong>{{ '전송 성공' if latest.status == 'SUCCESS' else '전송 실패' }}</strong><small>{{ latest.sent_at.strftime('%H:%M:%S') if latest.sent_at else latest.error_message }}</small></div></div>
-        {% if latest.status == 'FAILED' %}<form method="post" action="/sms/retry"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit">동일 내용 재전송</button></form>{% endif %}
+        {% if latest.status == 'FAILED' %}<form method="post" action="/sms/retry"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit" data-submitting-text="재전송 중...">동일 내용 재전송</button></form>{% endif %}
       {% else %}<p class="muted">아직 발송 내역이 없습니다.</p>{% endif %}
     </article>
 
     <article class="panel compact-panel">
       <div class="panel-heading"><div><h2>공휴일 정보</h2><p>한국천문연구원 특일 정보</p></div></div>
-      <form method="post" action="/holidays/sync"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit">올해 공휴일 동기화</button></form>
+      <form method="post" action="/holidays/sync"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit" data-submitting-text="동기화 중...">올해 공휴일 동기화</button></form>
       {% if not settings.holiday_api_key %}<p class="fine-print">동기화하려면 HOLIDAY_API_KEY를 설정하세요.</p>{% endif %}
     </article>
   </aside>

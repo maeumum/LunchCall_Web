@@ -311,3 +311,24 @@ if (smsSettingsPreview) {
   });
   updateSmsPreview();
 }
+
+document.querySelectorAll('form[method="post"]:not([data-confirm-sms-form])').forEach((form) => {
+  form.addEventListener("submit", (event) => {
+    if (event.defaultPrevented) return;
+    if (form.dataset.submitting === "true") {
+      event.preventDefault();
+      return;
+    }
+
+    form.dataset.submitting = "true";
+    form.setAttribute("aria-busy", "true");
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((button) => {
+      button.disabled = true;
+    });
+
+    const submitter = event.submitter;
+    if (submitter?.dataset.submittingText) {
+      submitter.textContent = submitter.dataset.submittingText;
+    }
+  });
+});

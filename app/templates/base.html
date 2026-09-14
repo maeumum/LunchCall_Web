@@ -25,7 +25,7 @@
       <a class="account-link {{ 'active' if request.url.path.startswith('/settings') else '' }}" href="/settings" {% if request.url.path.startswith('/settings') %}aria-current="page"{% endif %}>설정</a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="text-button" type="submit">로그아웃</button>
+        <button class="text-button" type="submit" data-submitting-text="로그아웃 중...">로그아웃</button>
       </form>
     </div>
   </header>

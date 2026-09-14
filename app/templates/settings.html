@@ -99,7 +99,7 @@
       <form method="post" action="/holidays/sync">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="return_to" value="/settings?section=holidays">
-        <button class="primary" type="submit" {% if not settings.holiday_api_key %}aria-describedby="holiday-key-notice" disabled{% endif %}>올해 공휴일 동기화</button>
+        <button class="primary" type="submit" data-submitting-text="동기화 중..." {% if not settings.holiday_api_key %}aria-describedby="holiday-key-notice" disabled{% endif %}>올해 공휴일 동기화</button>
       </form>
       {% if not settings.holiday_api_key %}<p class="settings-notice" id="holiday-key-notice">서버 환경 변수에 HOLIDAY_API_KEY를 설정하면 동기화할 수 있습니다.</p>{% endif %}
     </article>
@@ -127,7 +127,7 @@
         <label>현재 비밀번호 <b>*</b>
           <input name="current_password" type="password" autocomplete="current-password" placeholder="현재 비밀번호를 입력하세요" required>
         </label>
-        <button class="primary account-submit" type="submit">계정 정보 변경</button>
+        <button class="primary account-submit" type="submit" data-submitting-text="변경 중...">계정 정보 변경</button>
       </form>
       <div class="account-security-note">
         계정 정보를 변경하면 다른 브라우저의 기존 로그인 세션은 종료됩니다.

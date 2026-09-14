@@ -79,6 +79,7 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "오늘의 식수" in login.text
         assert "/static/lunchcall-logo.png" in login.text
         assert "lunchcall-logo-active.png" not in login.text
+        assert 'data-submitting-text="로그아웃 중...' in login.text
         assert 'href="/settings"' in login.text
         assert '>설정</a>' in login.text
         assert 'aria-current="page">오늘의 식수' in login.text
@@ -202,6 +203,9 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "김길동님의 정보를 수정했습니다" in edited.text
         assert "교육운영홍보팀" in edited.text
         assert "010-8765-4321" in edited.text
+        assert 'data-submitting-text="추가 중...' in edited.text
+        assert 'data-submitting-text="삭제 중...' in edited.text
+        assert 'data-submitting-text="저장 중...' in edited.text
 
         dashboard = client.get("/")
         assert "김길동" in dashboard.text

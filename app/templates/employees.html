@@ -109,7 +109,7 @@
         <input name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}" data-phone-input placeholder="010-0000-0000">
         <small class="field-help">숫자 11자리만 입력할 수 있습니다.</small>
       </label>
-      <button class="primary wide" type="submit">직원 추가</button>
+      <button class="primary wide" type="submit" data-submitting-text="추가 중...">직원 추가</button>
     </form>
   </aside>
 </section>
@@ -147,10 +147,10 @@
     </div>
 
     <div class="modal-actions">
-      <button class="small-button danger modal-delete" id="edit-employee-delete" type="submit" formnovalidate>직원 삭제</button>
+      <button class="small-button danger modal-delete" id="edit-employee-delete" type="submit" formnovalidate data-submitting-text="삭제 중...">직원 삭제</button>
       <div class="modal-actions-main">
         <button class="secondary" type="button" data-modal-close>취소</button>
-        <button class="primary" type="submit">변경 내용 저장</button>
+        <button class="primary" type="submit" data-submitting-text="저장 중...">변경 내용 저장</button>
       </div>
     </div>
   </form>
