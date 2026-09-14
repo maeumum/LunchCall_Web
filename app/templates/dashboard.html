@@ -132,11 +132,6 @@
       {% else %}<p class="muted">아직 발송 내역이 없습니다.</p>{% endif %}
     </article>
 
-    <article class="panel compact-panel">
-      <div class="panel-heading"><div><h2>공휴일 정보</h2><p>한국천문연구원 특일 정보</p></div></div>
-      <form method="post" action="/holidays/sync"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit" data-submitting-text="동기화 중...">올해 공휴일 동기화</button></form>
-      {% if not settings.holiday_api_key %}<p class="fine-print">동기화하려면 HOLIDAY_API_KEY를 설정하세요.</p>{% endif %}
-    </article>
   </aside>
 </section>
 

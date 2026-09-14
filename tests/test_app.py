@@ -88,6 +88,7 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "아직 등록된 재직 직원이 없습니다" in login.text
         assert "직원 관리에서 추가하기" in login.text
         assert 'data-confirm-permanently-blocked="true"' in login.text
+        assert 'action="/holidays/sync"' not in login.text
         csrf = csrf_from(login.text)
 
         missing_page = client.get("/not-a-page")
@@ -123,11 +124,20 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "AISW연구개발팀" in department_settings.text
         assert "부서 저장 기능" in department_settings.text
 
+        holiday_settings = client.get("/settings?section=holidays")
+        assert 'aria-current="page"><span>공휴일' in holiday_settings.text
+        assert 'action="/holidays/sync"' in holiday_settings.text
+        assert 'name="return_to" value="/settings?section=holidays"' in holiday_settings.text
+
         holiday_sync = client.post(
             "/holidays/sync",
-            data={"csrf_token": csrf},
+            data={
+                "csrf_token": csrf,
+                "return_to": "/settings?section=holidays",
+            },
             follow_redirects=True,
         )
+        assert "section=holidays" in str(holiday_sync.url)
         assert "HOLIDAY_API_KEY가 설정되지 않았습니다" in holiday_sync.text
 
         invalid_department = client.post(
