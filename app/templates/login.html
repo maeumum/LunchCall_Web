@@ -12,6 +12,7 @@
     <div class="login-logo"><img class="brand-logo" src="{{ url_for('static', path='/lunchcall-logo.png') }}" alt="" width="46" height="46"> LunchCall</div>
     <h2>관리자 로그인</h2>
     <p class="muted">식수 관리자 계정으로 로그인해 주세요.</p>
+    {% if expired %}<div class="inline-notice" role="status">로그인 시간이 만료되었습니다. 다시 로그인해 주세요.</div>{% endif %}
     {% if error %}<div class="inline-error" role="alert">{{ error }}</div>{% endif %}
     <label>로그인 아이디<input name="login_id" autocomplete="username" required autofocus></label>
     <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>

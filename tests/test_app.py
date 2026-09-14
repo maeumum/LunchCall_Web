@@ -41,6 +41,24 @@ def test_health() -> None:
         assert response.json()["time"].endswith("+09:00")
 
 
+def test_expired_session_notice() -> None:
+    with TestClient(app) as client:
+        client.cookies.set(
+            "lunchcall_session",
+            "expired-or-invalid-session",
+            domain="testserver.local",
+            path="/",
+        )
+        response = client.get("/", follow_redirects=True)
+        assert response.status_code == 200
+        assert response.url.path == "/login"
+        assert "로그인 시간이 만료되었습니다" in response.text
+        assert "lunchcall_session" not in client.cookies
+
+        first_visit = client.get("/", follow_redirects=True)
+        assert "로그인 시간이 만료되었습니다" not in first_visit.text
+
+
 def test_admin_meal_flow(monkeypatch) -> None:
     with TestClient(app) as client:
         failed = client.post(

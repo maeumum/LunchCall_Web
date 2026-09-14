@@ -99,8 +99,13 @@ def normalize_phone(phone: str) -> str | None:
 
 
 @app.exception_handler(401)
-async def unauthorized_handler(_: Request, __: HTTPException):
-    return RedirectResponse("/login", status_code=303)
+async def unauthorized_handler(request: Request, __: HTTPException):
+    had_session_cookie = bool(request.cookies.get("lunchcall_session"))
+    target = "/login?expired=1" if had_session_cookie else "/login"
+    response = RedirectResponse(target, status_code=303)
+    if had_session_cookie:
+        response.delete_cookie("lunchcall_session")
+    return response
 
 
 def render_error_page(request: Request, status_code: int):
@@ -188,7 +193,11 @@ def login_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"error": request.query_params.get("error"), "settings": settings},
+        {
+            "error": request.query_params.get("error"),
+            "expired": request.query_params.get("expired") == "1",
+            "settings": settings,
+        },
     )
 
 
