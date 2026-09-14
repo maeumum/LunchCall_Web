@@ -26,7 +26,7 @@
           <span aria-hidden="true">⌕</span>
           <input type="search" data-employee-search placeholder="이름, 부서 또는 연락처 검색" autocomplete="off" aria-label="직원 검색">
         </form>
-        <div class="employee-filters" aria-label="직원 목록 필터">
+        <div class="employee-filters" role="group" aria-label="직원 목록 필터">
           <label>
             <span class="sr-only">부서 필터</span>
             <select data-employee-department-filter aria-label="부서별 필터">
@@ -49,6 +49,7 @@
     </div>
     <div class="table-wrap">
       <table class="employee-table">
+        <caption class="sr-only">직원 이름, 부서, 연락처, 재직 상태 및 관리 기능</caption>
         <thead>
           <tr><th>이름</th><th>부서</th><th>연락처</th><th>상태</th><th>관리</th></tr>
         </thead>
@@ -113,7 +114,7 @@
   </aside>
 </section>
 
-<dialog class="modal" id="employee-edit-dialog" aria-labelledby="employee-edit-title">
+<dialog class="modal" id="employee-edit-dialog" aria-labelledby="employee-edit-title" aria-modal="true">
   <form class="modal-card" id="employee-edit-form" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="modal-heading">

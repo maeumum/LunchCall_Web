@@ -12,6 +12,16 @@
   </div>
 </section>
 
+{% if holiday %}
+<section class="holiday-banner" role="status" aria-label="오늘은 휴일입니다">
+  <span class="holiday-banner-icon" aria-hidden="true">휴</span>
+  <div>
+    <strong>오늘은 {{ holiday }}입니다.</strong>
+    <p>식수 확정과 문자 발송이 중지됩니다. 직원 명단과 예상 인원은 조회만 할 수 있습니다.</p>
+  </div>
+</section>
+{% endif %}
+
 <section class="stats-grid">
   <article class="stat-card"><span>재직 직원</span><strong>{{ daily.active_count if daily.status == 'CONFIRMED' else summary.active_count }}<small>명</small></strong><p>오늘 집계 대상</p></article>
   <article class="stat-card absent"><span>불참 인원</span><strong>{{ daily.absent_count if daily.status == 'CONFIRMED' else summary.absent_count }}<small>명</small></strong><p>식사하지 않음</p></article>
@@ -21,7 +31,7 @@
 <section class="content-grid">
   <article class="panel roster-panel">
     <div class="panel-heading">
-      <div><h2>직원 명단</h2><p>카드를 눌러 불참 여부를 변경합니다.</p></div>
+      <div><h2>직원 명단</h2><p>{% if holiday %}휴일에는 식사 상태를 변경할 수 없습니다.{% elif summary.employees %}카드를 눌러 불참 여부를 변경합니다.{% else %}식수 집계를 시작하려면 재직 직원을 등록해 주세요.{% endif %}</p></div>
       <span class="count-badge">{{ summary.employees|length }}명</span>
     </div>
     {% if summary.employees %}
@@ -30,7 +40,7 @@
         <span aria-hidden="true">⌕</span>
         <input type="search" data-meal-search placeholder="이름 또는 부서 검색" autocomplete="off" aria-label="오늘의 식수 직원 검색">
       </form>
-      <div class="meal-filter" data-meal-filter aria-label="식사 상태 필터">
+      <div class="meal-filter" data-meal-filter role="group" aria-label="식사 상태 필터">
         <button class="active" type="button" data-meal-filter-value="ALL" aria-pressed="true">전체</button>
         <button type="button" data-meal-filter-value="MEAL" aria-pressed="false">식사</button>
         <button type="button" data-meal-filter-value="ABSENT" aria-pressed="false">불참</button>
@@ -41,7 +51,7 @@
       {% for employee in summary.employees %}
       <form method="post" action="/absences/{{ employee.id }}/toggle" data-meal-employee data-search-text="{{ employee.name }} {{ employee.department or '' }}" data-meal-status="{{ 'ABSENT' if employee.id in summary.absent_ids else 'MEAL' }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="employee-card {{ 'is-absent' if employee.id in summary.absent_ids else '' }}" type="submit" {% if daily.status == 'CONFIRMED' or holiday %}disabled{% endif %}>
+        <button class="employee-card {{ 'is-absent' if employee.id in summary.absent_ids else '' }}" type="submit" aria-pressed="{{ 'true' if employee.id in summary.absent_ids else 'false' }}" aria-label="{{ employee.name }}, 현재 {{ '불참' if employee.id in summary.absent_ids else '식사' }}. 눌러서 변경" {% if daily.status == 'CONFIRMED' or holiday %}disabled{% endif %}>
           <span class="avatar">{{ employee.name[0] }}</span>
           <span class="employee-copy"><strong>{{ employee.name }}</strong><small>{{ employee.department or '부서 미지정' }}</small></span>
           <span class="meal-state">{{ '불참' if employee.id in summary.absent_ids else '식사' }}</span>
@@ -54,7 +64,12 @@
       </div>
     </div>
     {% else %}
-    <div class="empty-state"><strong>재직 직원이 없습니다.</strong><p>직원 관리에서 첫 직원을 추가해 주세요.</p><a class="secondary" href="/employees">직원 추가하기</a></div>
+    <div class="empty-state employee-empty-state">
+      <span class="empty-state-icon" aria-hidden="true">+</span>
+      <strong>아직 등록된 재직 직원이 없습니다.</strong>
+      <p>직원을 등록하면 모든 재직자가 기본 식사 인원으로 자동 집계됩니다.</p>
+      <a class="secondary" href="/employees">직원 관리에서 추가하기</a>
+    </div>
     {% endif %}
   </article>
 
@@ -72,7 +87,7 @@
           {% endif %}
         </dd></div>
         <div><dt>발송 번호</dt><dd>{{ settings.sms_recipient }}</dd></div>
-        <div><dt>확정 가능</dt><dd>오전 9:50부터</dd></div>
+        <div><dt>확정 가능</dt><dd>한국시간 오전 9:50부터</dd></div>
       </dl>
       {% if daily.status == 'DRAFT' %}
       <button
@@ -89,7 +104,7 @@
       {% elif not summary.employees %}
       <p class="fine-print">확정하려면 재직 직원을 먼저 추가해 주세요.</p>
       {% elif confirmation_time_locked %}
-      <p class="fine-print confirm-time-notice locked" data-confirm-time-notice>오전 9:50부터 확정할 수 있습니다.</p>
+      <p class="fine-print confirm-time-notice locked" data-confirm-time-notice>한국시간 오전 9:50부터 확정할 수 있습니다.</p>
       {% else %}
       <p class="fine-print">확정 후에는 불참자와 식사 인원을 수정할 수 없습니다.</p>
       {% endif %}
@@ -122,7 +137,7 @@
 </section>
 
 {% if daily.status == 'DRAFT' %}
-<dialog class="modal confirm-sms-modal" id="confirm-sms-dialog" aria-labelledby="confirm-sms-title">
+<dialog class="modal confirm-sms-modal" id="confirm-sms-dialog" aria-labelledby="confirm-sms-title" aria-modal="true">
   <form class="modal-card" method="post" action="/confirm" data-confirm-sms-form>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="modal-heading">

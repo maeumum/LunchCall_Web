@@ -16,6 +16,20 @@ document.querySelectorAll("[data-phone-input]").forEach((input) => {
   });
 });
 
+const prepareDialog = (dialog) => {
+  dialog.addEventListener("close", () => {
+    const trigger = dialog.returnFocusTarget;
+    if (trigger?.isConnected) trigger.focus();
+    dialog.returnFocusTarget = null;
+  });
+};
+
+const openDialog = (dialog, trigger, initialFocus) => {
+  dialog.returnFocusTarget = trigger;
+  dialog.showModal();
+  initialFocus?.focus();
+};
+
 const employeeEditDialog = document.querySelector("#employee-edit-dialog");
 
 if (employeeEditDialog) {
@@ -25,6 +39,7 @@ if (employeeEditDialog) {
   const phoneInput = employeeEditDialog.querySelector("#edit-employee-phone");
   const statusSelect = employeeEditDialog.querySelector("#edit-employee-status");
   const deleteButton = employeeEditDialog.querySelector("#edit-employee-delete");
+  prepareDialog(employeeEditDialog);
 
   document.querySelectorAll("[data-employee-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -38,8 +53,7 @@ if (employeeEditDialog) {
         `${button.dataset.employeeName}님을 직원 목록에서 삭제할까요? 과거 기록은 유지됩니다.`,
       );
       formatPhoneInput(phoneInput);
-      employeeEditDialog.showModal();
-      nameInput.focus();
+      openDialog(employeeEditDialog, button, nameInput);
       nameInput.select();
     });
   });
@@ -159,6 +173,10 @@ if (confirmSmsDialog) {
   const openButton = document.querySelector("[data-confirm-sms-open]");
   const confirmForm = confirmSmsDialog.querySelector("[data-confirm-sms-form]");
   const submitButton = confirmSmsDialog.querySelector("[data-confirm-sms-submit]");
+  const cancelButton = confirmSmsDialog.querySelector(
+    ".confirm-modal-actions [data-confirm-sms-close]",
+  );
+  prepareDialog(confirmSmsDialog);
 
   if (openButton.dataset.confirmTimeLocked === "true") {
     const waitSeconds = Number(openButton.dataset.confirmWaitSeconds || 0);
@@ -188,7 +206,7 @@ if (confirmSmsDialog) {
         `${seconds}초`,
       ].filter(Boolean).join(" ");
       if (timeNotice) {
-        timeNotice.textContent = `오전 9:50까지 ${remainingText} 남았습니다.`;
+        timeNotice.textContent = `한국시간 오전 9:50까지 ${remainingText} 남았습니다.`;
       }
       return false;
     };
@@ -200,7 +218,9 @@ if (confirmSmsDialog) {
     }
   }
 
-  openButton.addEventListener("click", () => confirmSmsDialog.showModal());
+  openButton.addEventListener("click", () => {
+    openDialog(confirmSmsDialog, openButton, cancelButton);
+  });
 
   confirmSmsDialog.querySelectorAll("[data-confirm-sms-close]").forEach((button) => {
     button.addEventListener("click", () => confirmSmsDialog.close());
@@ -222,7 +242,9 @@ document.querySelectorAll("[data-history-open]").forEach((button) => {
   const dialog = document.querySelector(`#${button.dataset.historyOpen}`);
   if (!dialog) return;
 
-  button.addEventListener("click", () => dialog.showModal());
+  prepareDialog(dialog);
+  const closeButton = dialog.querySelector("[data-history-close]");
+  button.addEventListener("click", () => openDialog(dialog, button, closeButton));
   dialog.querySelectorAll("[data-history-close]").forEach((closeButton) => {
     closeButton.addEventListener("click", () => dialog.close());
   });

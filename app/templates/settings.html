@@ -11,11 +11,11 @@
 
 <section class="settings-layout">
   <nav class="settings-nav" aria-label="설정 메뉴">
-    <a class="{{ 'active' if active_section == 'general' else '' }}" href="/settings?section=general"><span>기본 설정</span><small>회사와 운영 기준</small></a>
-    <a class="{{ 'active' if active_section == 'sms' else '' }}" href="/settings?section=sms"><span>SMS 설정</span><small>수신 번호와 문구</small></a>
-    <a class="{{ 'active' if active_section == 'departments' else '' }}" href="/settings?section=departments"><span>부서 관리</span><small>부서 목록과 인원</small></a>
-    <a class="{{ 'active' if active_section == 'holidays' else '' }}" href="/settings?section=holidays"><span>공휴일</span><small>휴일 데이터 연동</small></a>
-    <a class="{{ 'active' if active_section == 'account' else '' }}" href="/settings?section=account"><span>관리자 계정</span><small>아이디와 비밀번호</small></a>
+    <a class="{{ 'active' if active_section == 'general' else '' }}" href="/settings?section=general" {% if active_section == 'general' %}aria-current="page"{% endif %}><span>기본 설정</span><small>회사와 운영 기준</small></a>
+    <a class="{{ 'active' if active_section == 'sms' else '' }}" href="/settings?section=sms" {% if active_section == 'sms' %}aria-current="page"{% endif %}><span>SMS 설정</span><small>수신 번호와 문구</small></a>
+    <a class="{{ 'active' if active_section == 'departments' else '' }}" href="/settings?section=departments" {% if active_section == 'departments' %}aria-current="page"{% endif %}><span>부서 관리</span><small>부서 목록과 인원</small></a>
+    <a class="{{ 'active' if active_section == 'holidays' else '' }}" href="/settings?section=holidays" {% if active_section == 'holidays' %}aria-current="page"{% endif %}><span>공휴일</span><small>휴일 데이터 연동</small></a>
+    <a class="{{ 'active' if active_section == 'account' else '' }}" href="/settings?section=account" {% if active_section == 'account' %}aria-current="page"{% endif %}><span>관리자 계정</span><small>아이디와 비밀번호</small></a>
   </nav>
 
   <div class="settings-content">

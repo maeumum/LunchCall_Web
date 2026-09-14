@@ -132,7 +132,7 @@ def confirm_and_send(db: Session, daily: DailyMeal, admin_id: int) -> SmsLog:
     if reason:
         raise BusinessRuleError(f"오늘은 {reason}이므로 식수를 확정할 수 없습니다.")
     if now.time() < CONFIRM_TIME and not settings.allow_early_confirm:
-        raise BusinessRuleError("오전 9시 50분부터 최종 확정할 수 있습니다.")
+        raise BusinessRuleError("한국시간 오전 9시 50분부터 최종 확정할 수 있습니다.")
 
     summary = meal_summary(db, daily)
     result = db.execute(

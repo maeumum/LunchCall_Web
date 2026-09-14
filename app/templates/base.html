@@ -9,6 +9,7 @@
   <script defer src="{{ url_for('static', path='/app.js') }}"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">본문 바로가기</a>
   {% if admin %}
   <header class="site-header">
     <a class="brand" href="/">
@@ -16,12 +17,12 @@
       <span>LunchCall</span>
     </a>
     <nav>
-      <a class="{{ 'active' if request.url.path == '/' else '' }}" href="/">오늘의 식수</a>
-      <a class="{{ 'active' if request.url.path.startswith('/employees') else '' }}" href="/employees">직원 관리</a>
-      <a class="{{ 'active' if request.url.path.startswith('/history') else '' }}" href="/history">확정 이력</a>
+      <a class="{{ 'active' if request.url.path == '/' else '' }}" href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>오늘의 식수</a>
+      <a class="{{ 'active' if request.url.path.startswith('/employees') else '' }}" href="/employees" {% if request.url.path.startswith('/employees') %}aria-current="page"{% endif %}>직원 관리</a>
+      <a class="{{ 'active' if request.url.path.startswith('/history') else '' }}" href="/history" {% if request.url.path.startswith('/history') %}aria-current="page"{% endif %}>확정 이력</a>
     </nav>
     <div class="account">
-      <a class="account-link {{ 'active' if request.url.path.startswith('/settings') else '' }}" href="/settings">설정</a>
+      <a class="account-link {{ 'active' if request.url.path.startswith('/settings') else '' }}" href="/settings" {% if request.url.path.startswith('/settings') %}aria-current="page"{% endif %}>설정</a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="text-button" type="submit">로그아웃</button>
@@ -30,9 +31,9 @@
   </header>
   {% endif %}
 
-  <main class="{% block main_class %}page-shell{% endblock %}">
-    {% if message %}<div class="toast success">{{ message }}</div>{% endif %}
-    {% if error %}<div class="toast error">{{ error }}</div>{% endif %}
+  <main id="main-content" class="{% block main_class %}page-shell{% endblock %}" tabindex="-1">
+    {% if message %}<div class="toast success" role="status">{{ message }}</div>{% endif %}
+    {% if error %}<div class="toast error" role="alert">{{ error }}</div>{% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>
