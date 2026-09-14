@@ -16,6 +16,38 @@ document.querySelectorAll("[data-phone-input]").forEach((input) => {
   });
 });
 
+const dashboardDate = document.querySelector("[data-dashboard-date]");
+
+if (dashboardDate) {
+  const renderedDate = dashboardDate.dataset.dashboardDate;
+  const rolloverNotice = document.querySelector("[data-date-rollover-notice]");
+  let isReloadingForNewDate = false;
+
+  const currentKoreanDate = () => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  };
+
+  const refreshWhenDateChanges = () => {
+    if (isReloadingForNewDate || currentKoreanDate() === renderedDate) return;
+    isReloadingForNewDate = true;
+    if (rolloverNotice) rolloverNotice.hidden = false;
+    window.setTimeout(() => window.location.reload(), 500);
+  };
+
+  window.setInterval(refreshWhenDateChanges, 30000);
+  window.addEventListener("focus", refreshWhenDateChanges);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshWhenDateChanges();
+  });
+}
+
 const prepareDialog = (dialog) => {
   dialog.addEventListener("close", () => {
     const trigger = dialog.returnFocusTarget;

@@ -50,3 +50,5 @@
 @media(max-width:500px){.modal-card{padding:21px}.modal-heading{padding-bottom:15px}.modal-actions{align-items:stretch;flex-direction:column-reverse}.modal-actions-main{display:grid;grid-template-columns:1fr 1fr;width:100%}.modal-actions>button,.modal-actions-main button{width:100%;min-height:44px}.confirm-modal-actions .primary,.confirm-modal-actions .secondary,.history-modal-actions .secondary{width:100%}}
 
 .inline-notice{padding:11px 13px;border-radius:9px;background:var(--green-soft);color:var(--green);font-size:12px;font-weight:600;line-height:1.55}
+
+.date-rollover-notice{position:fixed;top:84px;left:50%;z-index:20;transform:translateX(-50%);padding:11px 16px;border:1px solid #cfe4d9;border-radius:10px;background:var(--green-soft);color:var(--green);box-shadow:var(--shadow);font-size:12px;font-weight:700}.date-rollover-notice[hidden]{display:none}

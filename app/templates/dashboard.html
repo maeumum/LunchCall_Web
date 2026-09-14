@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}오늘의 식수 · LunchCall{% endblock %}
 {% block content %}
-<section class="page-heading">
+<section class="page-heading" data-dashboard-date="{{ now.date().isoformat() }}">
   <div>
     <span class="eyebrow">TODAY'S MEAL</span>
     <h1>{{ now.month }}월 {{ now.day }}일 <span>{{ ['월', '화', '수', '목', '금', '토', '일'][now.weekday()] }}요일</span></h1>
@@ -11,6 +11,10 @@
     <i></i>{% if holiday %}휴일{% elif daily.status == 'CONFIRMED' %}확정 완료{% else %}입력 중{% endif %}
   </div>
 </section>
+
+<div class="date-rollover-notice" data-date-rollover-notice role="status" hidden>
+  한국시간 기준 날짜가 변경되어 오늘 화면을 불러오고 있습니다.
+</div>
 
 {% if holiday %}
 <section class="holiday-banner" role="status" aria-label="오늘은 휴일입니다">

@@ -215,6 +215,9 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "실제 발송 문구" in dashboard.text
         assert "010-0000-0000" in dashboard.text
         assert "식사 인원은 1명입니다" in dashboard.text
+        assert 'data-dashboard-date="' in dashboard.text
+        assert "data-date-rollover-notice" in dashboard.text
+        assert "한국시간 기준 날짜가 변경되어" in dashboard.text
 
         with monkeypatch.context() as patcher:
             patcher.setattr(
