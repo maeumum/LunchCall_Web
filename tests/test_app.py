@@ -87,11 +87,14 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "공휴일" in settings_page.text
         assert "관리자 계정" in settings_page.text
         assert 'aria-current="page"><span>기본 설정' in settings_page.text
+        assert 'aria-describedby="general-save-notice"' in settings_page.text
+        assert "입력한 값이 저장되지 않습니다" in settings_page.text
 
         sms_settings = client.get("/settings?section=sms")
         assert "발송 미리보기" in sms_settings.text
         assert "data-sms-template" in sms_settings.text
         assert "data-sms-preview-message" in sms_settings.text
+        assert 'aria-describedby="sms-save-notice"' in sms_settings.text
 
         department_settings = client.get("/settings?section=departments")
         assert "AISW연구개발팀" in department_settings.text

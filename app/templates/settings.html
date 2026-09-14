@@ -34,7 +34,8 @@
           <input value="Asia/Seoul" readonly>
           <small class="field-help">식수 확정과 공휴일 판별은 한국 시간을 기준으로 합니다.</small>
         </label>
-        <button class="primary settings-save" type="button" disabled>DB 연결 후 저장 가능</button>
+        <button class="primary settings-save" type="button" aria-describedby="general-save-notice" disabled>DB 연결 후 저장 가능</button>
+        <p class="settings-notice" id="general-save-notice">현재는 화면 설계 단계로 입력한 값이 저장되지 않습니다.</p>
       </div>
     </article>
 
@@ -56,7 +57,8 @@
             <textarea rows="4" data-sms-template>[{company_name}] {date} 식사 인원은 {meal_count}명입니다.</textarea>
             <small class="field-help">{company_name}, {date}, {meal_count}, {absent_count} 변수를 사용할 수 있습니다.</small>
           </label>
-          <button class="primary settings-save" type="button" disabled>DB 연결 후 저장 가능</button>
+          <button class="primary settings-save" type="button" aria-describedby="sms-save-notice" disabled>DB 연결 후 저장 가능</button>
+          <p class="settings-notice" id="sms-save-notice">현재는 미리보기만 제공하며 입력한 값은 저장되지 않습니다.</p>
         </div>
         <aside class="settings-preview-card" data-sms-preview data-preview-date="{{ preview_date.year }}년 {{ preview_date.month }}월 {{ preview_date.day }}일">
           <span class="eyebrow">MESSAGE PREVIEW</span>
@@ -97,9 +99,9 @@
       <form method="post" action="/holidays/sync">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="return_to" value="/settings?section=holidays">
-        <button class="primary" type="submit" {% if not settings.holiday_api_key %}disabled{% endif %}>올해 공휴일 동기화</button>
+        <button class="primary" type="submit" {% if not settings.holiday_api_key %}aria-describedby="holiday-key-notice" disabled{% endif %}>올해 공휴일 동기화</button>
       </form>
-      {% if not settings.holiday_api_key %}<p class="settings-notice">서버 환경 변수에 HOLIDAY_API_KEY를 설정하면 동기화할 수 있습니다.</p>{% endif %}
+      {% if not settings.holiday_api_key %}<p class="settings-notice" id="holiday-key-notice">서버 환경 변수에 HOLIDAY_API_KEY를 설정하면 동기화할 수 있습니다.</p>{% endif %}
     </article>
 
     {% elif active_section == 'account' %}
