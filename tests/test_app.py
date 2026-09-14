@@ -59,6 +59,8 @@ def test_admin_meal_flow(monkeypatch) -> None:
         )
         assert login.status_code == 200
         assert "오늘의 식수" in login.text
+        assert "/static/lunchcall-logo.png" in login.text
+        assert "lunchcall-logo-active.png" not in login.text
         assert 'href="/settings"' in login.text
         assert '>설정</a>' in login.text
         assert 'aria-current="page">오늘의 식수' in login.text
