@@ -20,9 +20,11 @@ os.environ["PROTOTYPE_ALLOW_EARLY_CONFIRM"] = "true"
 os.environ["SMS_MODE"] = "mock"
 
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
-from app.database import engine  # noqa: E402
+from app.database import SessionLocal, engine  # noqa: E402
 from app.main import app, initialize_database  # noqa: E402
+from app.models import SmsLog  # noqa: E402
 
 main_module = importlib.import_module("app.main")
 
@@ -272,6 +274,35 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "확정 완료" in confirmed.text
         assert "전송 성공" in confirmed.text
 
+        employee_list = client.get("/employees")
+        assert 'id="employee-delete-dialog"' in employee_list.text
+        assert "data-employee-delete-open" in employee_list.text
+        assert "삭제된 직원은 화면에서 복구할 수 없습니다" in employee_list.text
+
+        with SessionLocal() as db:
+            latest_sms = db.scalar(select(SmsLog).order_by(SmsLog.id.desc()))
+            assert latest_sms
+            latest_sms.status = "FAILED"
+            latest_sms.sent_at = None
+            latest_sms.error_message = "테스트 발송 실패"
+            db.commit()
+
+        failed_sms_dashboard = client.get("/")
+        assert "전송 실패" in failed_sms_dashboard.text
+        assert "data-sms-retry-open" in failed_sms_dashboard.text
+        assert 'id="sms-retry-dialog"' in failed_sms_dashboard.text
+        assert "테스트 발송 실패" in failed_sms_dashboard.text
+        assert "식사 인원은 0명입니다" in failed_sms_dashboard.text
+        assert "문자를 중복 수신할 수 있습니다" in failed_sms_dashboard.text
+
+        csrf = csrf_from(failed_sms_dashboard.text)
+        retried_sms = client.post(
+            "/sms/retry", data={"csrf_token": csrf}, follow_redirects=True
+        )
+        assert "문자를 다시 전송했습니다" in retried_sms.text
+        assert "전송 성공" in retried_sms.text
+        assert "data-sms-retry-open" not in retried_sms.text
+
         history = client.get("/history")
         assert history.status_code == 200
         assert "발송 성공" in history.text
@@ -282,6 +313,7 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "010-0000-0000" in history.text
         assert "식사 인원은 0명입니다" in history.text
         assert "1차" in history.text
+        assert "2차" in history.text
         assert "MOCK" in history.text
         assert "mock-" in history.text
 

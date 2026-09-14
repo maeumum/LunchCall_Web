@@ -147,11 +147,39 @@
     </div>
 
     <div class="modal-actions">
-      <button class="small-button danger modal-delete" id="edit-employee-delete" type="submit" formnovalidate data-submitting-text="삭제 중...">직원 삭제</button>
+      <button class="small-button danger modal-delete" id="edit-employee-delete" type="button" data-employee-delete-open>직원 삭제</button>
       <div class="modal-actions-main">
         <button class="secondary" type="button" data-modal-close>취소</button>
         <button class="primary" type="submit" data-submitting-text="저장 중...">변경 내용 저장</button>
       </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal destructive-confirm-modal" id="employee-delete-dialog" aria-labelledby="employee-delete-title" aria-modal="true">
+  <form class="modal-card" id="employee-delete-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="modal-heading">
+      <div>
+        <span class="eyebrow danger-eyebrow">DELETE MEMBER</span>
+        <h2 id="employee-delete-title">직원을 삭제할까요?</h2>
+        <p>삭제할 직원과 영향을 확인해 주세요.</p>
+      </div>
+      <button class="modal-close" type="button" data-employee-delete-close aria-label="직원 삭제 확인 창 닫기">×</button>
+    </div>
+
+    <div class="destructive-target">
+      <span>삭제 대상</span>
+      <strong data-employee-delete-name></strong>
+    </div>
+
+    <div class="confirm-warning">
+      직원 목록과 앞으로의 식수 집계에서 제외됩니다. 과거 확정 이력은 유지되며, 삭제된 직원은 화면에서 복구할 수 없습니다.
+    </div>
+
+    <div class="modal-actions confirm-modal-actions">
+      <button class="secondary" type="button" data-employee-delete-close>취소</button>
+      <button class="danger-button" type="submit" data-submitting-text="삭제 중...">직원 삭제</button>
     </div>
   </form>
 </dialog>

@@ -71,7 +71,14 @@ if (employeeEditDialog) {
   const phoneInput = employeeEditDialog.querySelector("#edit-employee-phone");
   const statusSelect = employeeEditDialog.querySelector("#edit-employee-status");
   const deleteButton = employeeEditDialog.querySelector("#edit-employee-delete");
+  const deleteDialog = document.querySelector("#employee-delete-dialog");
+  const deleteForm = deleteDialog.querySelector("#employee-delete-form");
+  const deleteName = deleteDialog.querySelector("[data-employee-delete-name]");
+  const deleteCancelButton = deleteDialog.querySelector(
+    ".confirm-modal-actions [data-employee-delete-close]",
+  );
   prepareDialog(employeeEditDialog);
+  prepareDialog(deleteDialog);
 
   document.querySelectorAll("[data-employee-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -80,10 +87,8 @@ if (employeeEditDialog) {
       departmentSelect.value = button.dataset.employeeDepartment;
       phoneInput.value = button.dataset.employeePhone;
       statusSelect.value = button.dataset.employeeStatus;
-      deleteButton.formAction = `/employees/${button.dataset.employeeId}/delete`;
-      deleteButton.onclick = () => confirm(
-        `${button.dataset.employeeName}님을 직원 목록에서 삭제할까요? 과거 기록은 유지됩니다.`,
-      );
+      deleteForm.action = `/employees/${button.dataset.employeeId}/delete`;
+      deleteName.textContent = button.dataset.employeeName;
       formatPhoneInput(phoneInput);
       openDialog(employeeEditDialog, button, nameInput);
       nameInput.select();
@@ -97,6 +102,20 @@ if (employeeEditDialog) {
   employeeEditDialog.addEventListener("click", (event) => {
     if (event.target === employeeEditDialog) {
       employeeEditDialog.close();
+    }
+  });
+
+  deleteButton.addEventListener("click", () => {
+    openDialog(deleteDialog, deleteButton, deleteCancelButton);
+  });
+
+  deleteDialog.querySelectorAll("[data-employee-delete-close]").forEach((button) => {
+    button.addEventListener("click", () => deleteDialog.close());
+  });
+
+  deleteDialog.addEventListener("click", (event) => {
+    if (event.target === deleteDialog) {
+      deleteDialog.close();
     }
   });
 }
@@ -267,6 +286,30 @@ if (confirmSmsDialog) {
   confirmForm.addEventListener("submit", () => {
     submitButton.disabled = true;
     submitButton.textContent = "전송 중...";
+  });
+}
+
+const smsRetryDialog = document.querySelector("#sms-retry-dialog");
+
+if (smsRetryDialog) {
+  const openButton = document.querySelector("[data-sms-retry-open]");
+  const cancelButton = smsRetryDialog.querySelector(
+    ".confirm-modal-actions [data-sms-retry-close]",
+  );
+  prepareDialog(smsRetryDialog);
+
+  openButton.addEventListener("click", () => {
+    openDialog(smsRetryDialog, openButton, cancelButton);
+  });
+
+  smsRetryDialog.querySelectorAll("[data-sms-retry-close]").forEach((button) => {
+    button.addEventListener("click", () => smsRetryDialog.close());
+  });
+
+  smsRetryDialog.addEventListener("click", (event) => {
+    if (event.target === smsRetryDialog) {
+      smsRetryDialog.close();
+    }
   });
 }
 

@@ -128,7 +128,7 @@
       {% if logs %}
         {% set latest = logs[0] %}
         <div class="log-row"><span class="log-icon {{ latest.status|lower }}">{{ '✓' if latest.status == 'SUCCESS' else '!' }}</span><div><strong>{{ '전송 성공' if latest.status == 'SUCCESS' else '전송 실패' }}</strong><small>{{ latest.sent_at.strftime('%H:%M:%S') if latest.sent_at else latest.error_message }}</small></div></div>
-        {% if latest.status == 'FAILED' %}<form method="post" action="/sms/retry"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="secondary wide" type="submit" data-submitting-text="재전송 중...">동일 내용 재전송</button></form>{% endif %}
+        {% if latest.status == 'FAILED' %}<button class="secondary wide sms-retry-open" type="button" data-sms-retry-open>동일 내용 재전송</button>{% endif %}
       {% else %}<p class="muted">아직 발송 내역이 없습니다.</p>{% endif %}
     </article>
 
@@ -139,6 +139,43 @@
     </article>
   </aside>
 </section>
+
+{% if logs and logs[0].status == 'FAILED' %}
+{% set failed_sms = logs[0] %}
+<dialog class="modal confirm-sms-modal" id="sms-retry-dialog" aria-labelledby="sms-retry-title" aria-modal="true">
+  <form class="modal-card" method="post" action="/sms/retry">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="modal-heading">
+      <div>
+        <span class="eyebrow">RETRY SMS</span>
+        <h2 id="sms-retry-title">문자를 다시 전송할까요?</h2>
+        <p>실패한 발송과 동일한 내용으로 다시 시도합니다.</p>
+      </div>
+      <button class="modal-close" type="button" data-sms-retry-close aria-label="문자 재전송 확인 창 닫기">×</button>
+    </div>
+
+    <div class="confirm-detail">
+      <div><span>재전송 시도</span><strong>{{ failed_sms.attempt_number + 1 }}차</strong></div>
+      <div><span>수신 번호</span><strong>{{ failed_sms.recipient }}</strong></div>
+      <div><span>이전 실패 사유</span><strong>{{ failed_sms.error_message or '업체 응답을 확인하지 못했습니다.' }}</strong></div>
+    </div>
+
+    <div class="sms-preview">
+      <span>재전송 문구</span>
+      <p>{{ failed_sms.message }}</p>
+    </div>
+
+    <div class="confirm-warning">
+      이전 요청이 실제로 전달되었지만 결과만 확인하지 못한 경우, 식당에서 문자를 중복 수신할 수 있습니다.
+    </div>
+
+    <div class="modal-actions confirm-modal-actions">
+      <button class="secondary" type="button" data-sms-retry-close>취소</button>
+      <button class="primary" type="submit" data-submitting-text="재전송 중...">동일 내용 재전송</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 
 {% if daily.status == 'DRAFT' %}
 <dialog class="modal confirm-sms-modal" id="confirm-sms-dialog" aria-labelledby="confirm-sms-title" aria-modal="true">
