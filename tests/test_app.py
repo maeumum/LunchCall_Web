@@ -27,6 +27,7 @@ from app.main import app, initialize_database  # noqa: E402
 from app.models import SmsLog  # noqa: E402
 
 main_module = importlib.import_module("app.main")
+services_module = importlib.import_module("app.services")
 
 
 def csrf_from(html: str) -> str:
@@ -332,6 +333,32 @@ def test_admin_meal_flow(monkeypatch) -> None:
             "/confirm", data={"csrf_token": csrf}, follow_redirects=True
         )
         assert "이미 확정된 식수입니다" in duplicate.text
+
+        production_settings = replace(
+            main_module.settings,
+            app_env="production",
+            sms_mode="live",
+            allow_early_confirm=True,
+        )
+        assert production_settings.cookie_secure
+        assert not production_settings.prototype_tools_enabled
+        assert not production_settings.early_confirmation_enabled
+        with monkeypatch.context() as patcher:
+            patcher.setattr(main_module, "settings", production_settings)
+            patcher.setattr(services_module, "settings", production_settings)
+            production_dashboard = client.get("/")
+            blocked_reset = client.post(
+                "/prototype/reset-today",
+                data={"csrf_token": csrf_from(production_dashboard.text)},
+            )
+            with TestClient(app) as anonymous_client:
+                production_login = anonymous_client.get("/login")
+        assert "목업 확정 초기화" not in production_dashboard.text
+        assert "식당으로 보낸 최근 문자 결과입니다" in production_dashboard.text
+        assert ">LIVE<" in production_dashboard.text
+        assert blocked_reset.status_code == 404
+        assert "페이지를 찾을 수 없습니다" in blocked_reset.text
+        assert "프로토타입 계정" not in production_login.text
 
         csrf = csrf_from(duplicate.text)
         reset_today = client.post(

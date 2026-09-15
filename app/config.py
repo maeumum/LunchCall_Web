@@ -35,7 +35,27 @@ class Settings:
 
     @property
     def cookie_secure(self) -> bool:
-        return self.app_env.lower() == "production"
+        return self.is_production
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.app_env.strip().lower() == "development"
+
+    @property
+    def is_mock_sms(self) -> bool:
+        return self.sms_mode.strip().lower() == "mock"
+
+    @property
+    def prototype_tools_enabled(self) -> bool:
+        return self.is_development and self.is_mock_sms
+
+    @property
+    def early_confirmation_enabled(self) -> bool:
+        return self.is_development and self.allow_early_confirm
 
     @property
     def departments(self) -> tuple[str, ...]:

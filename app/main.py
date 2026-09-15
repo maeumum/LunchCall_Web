@@ -357,7 +357,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         microsecond=0,
     )
     confirmation_time_locked = (
-        not settings.allow_early_confirm and now < confirm_opens_at
+        not settings.early_confirmation_enabled and now < confirm_opens_at
     )
     confirm_wait_seconds = (
         max(0, ceil((confirm_opens_at - now).total_seconds()))
@@ -473,6 +473,8 @@ def prototype_reset_today(
 ):
     session = require_auth(request, db)
     require_csrf(session, csrf_token)
+    if not settings.prototype_tools_enabled:
+        raise HTTPException(status_code=404, detail="페이지를 찾을 수 없습니다.")
     daily = get_or_create_daily_meal(db, seoul_now().date())
     try:
         reset_mock_confirmation(db, daily)

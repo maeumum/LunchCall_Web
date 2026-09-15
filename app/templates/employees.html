@@ -57,9 +57,9 @@
           {% for employee in employees %}
           <tr data-employee-row data-search-text="{{ employee.name }} {{ employee.department or '' }} {{ employee.phone or '' }}" data-department="{{ employee.department or '' }}" data-status="{{ employee.status }}">
             <td><strong>{{ employee.name }}</strong></td>
-            <td>{{ employee.department or '-' }}</td>
-            <td>{{ employee.phone or '-' }}</td>
-            <td>
+            <td data-label="부서">{{ employee.department or '-' }}</td>
+            <td data-label="연락처">{{ employee.phone or '-' }}</td>
+            <td data-label="상태">
               {{ {'ACTIVE':'재직','LEAVE':'휴직','RETIRED':'퇴사'}[employee.status] }}
             </td>
             <td>

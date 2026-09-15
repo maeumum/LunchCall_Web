@@ -114,7 +114,7 @@ def send_sms(db: Session, daily: DailyMeal, attempt_number: int) -> SmsLog:
     db.commit()
     db.refresh(log)
 
-    if settings.sms_mode == "mock":
+    if settings.is_mock_sms:
         log.status = "SUCCESS"
         log.provider_message_id = f"mock-{secrets.token_hex(6)}"
         log.sent_at = seoul_now()
@@ -131,7 +131,7 @@ def confirm_and_send(db: Session, daily: DailyMeal, admin_id: int) -> SmsLog:
     reason = holiday_name(db, now.date())
     if reason:
         raise BusinessRuleError(f"오늘은 {reason}이므로 식수를 확정할 수 없습니다.")
-    if now.time() < CONFIRM_TIME and not settings.allow_early_confirm:
+    if now.time() < CONFIRM_TIME and not settings.early_confirmation_enabled:
         raise BusinessRuleError("한국시간 오전 9시 50분부터 최종 확정할 수 있습니다.")
 
     summary = meal_summary(db, daily)
@@ -167,7 +167,7 @@ def retry_failed_sms(db: Session, daily: DailyMeal) -> SmsLog:
 
 
 def reset_mock_confirmation(db: Session, daily: DailyMeal) -> None:
-    if settings.app_env != "development" or settings.sms_mode != "mock":
+    if not settings.prototype_tools_enabled:
         raise BusinessRuleError("목업 환경에서만 오늘 확정을 초기화할 수 있습니다.")
     if daily.status != "CONFIRMED":
         raise BusinessRuleError("오늘은 아직 확정되지 않았습니다.")
