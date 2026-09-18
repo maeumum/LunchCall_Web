@@ -24,7 +24,7 @@ from sqlalchemy import select  # noqa: E402
 
 from app.database import SessionLocal, engine  # noqa: E402
 from app.main import app, initialize_database  # noqa: E402
-from app.models import SmsLog  # noqa: E402
+from app.models import ServiceSetting, SmsLog  # noqa: E402
 
 main_module = importlib.import_module("app.main")
 services_module = importlib.import_module("app.services")
@@ -112,14 +112,55 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "공휴일" in settings_page.text
         assert "관리자 계정" in settings_page.text
         assert 'aria-current="page"><span>기본 설정' in settings_page.text
-        assert 'aria-describedby="general-save-notice"' in settings_page.text
-        assert "입력한 값이 저장되지 않습니다" in settings_page.text
+        assert 'action="/settings/general"' in settings_page.text
+        assert 'name="company_name" value="회사명"' in settings_page.text
+
+        general_settings = client.post(
+            "/settings/general",
+            data={"csrf_token": csrf, "company_name": "테스트회사"},
+            follow_redirects=True,
+        )
+        assert "기본 설정을 저장했습니다" in general_settings.text
+        assert 'name="company_name" value="테스트회사"' in general_settings.text
 
         sms_settings = client.get("/settings?section=sms")
         assert "발송 미리보기" in sms_settings.text
         assert "data-sms-template" in sms_settings.text
         assert "data-sms-preview-message" in sms_settings.text
-        assert 'aria-describedby="sms-save-notice"' in sms_settings.text
+        assert 'action="/settings/sms"' in sms_settings.text
+        assert 'value="테스트회사"' in sms_settings.text
+
+        invalid_sms_settings = client.post(
+            "/settings/sms",
+            data={
+                "csrf_token": csrf,
+                "company_name": "테스트회사",
+                "sms_recipient": "01011112222",
+                "sms_template": "{unknown} 식사 {meal_count}명",
+            },
+            follow_redirects=True,
+        )
+        assert "사용할 수 없는 SMS 변수입니다: unknown" in invalid_sms_settings.text
+
+        saved_sms_settings = client.post(
+            "/settings/sms",
+            data={
+                "csrf_token": csrf,
+                "company_name": "테스트회사",
+                "sms_recipient": "01011112222",
+                "sms_template": "[{company_name}] {date} 식사 인원은 {meal_count}명입니다. 불참 {absent_count}명.",
+            },
+            follow_redirects=True,
+        )
+        assert "SMS 설정을 저장했습니다" in saved_sms_settings.text
+        assert 'value="010-1111-2222"' in saved_sms_settings.text
+        assert "불참 {absent_count}명" in saved_sms_settings.text
+
+        with SessionLocal() as db:
+            saved_service_settings = db.get(ServiceSetting, 1)
+            assert saved_service_settings
+            assert saved_service_settings.company_name == "테스트회사"
+            assert saved_service_settings.sms_recipient == "010-1111-2222"
 
         department_settings = client.get("/settings?section=departments")
         assert "AISW연구개발팀" in department_settings.text
@@ -230,7 +271,8 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert 'id="confirm-sms-dialog"' in dashboard.text
         assert 'aria-modal="true"' in dashboard.text
         assert "실제 발송 문구" in dashboard.text
-        assert "010-0000-0000" in dashboard.text
+        assert "010-1111-2222" in dashboard.text
+        assert "[테스트회사]" in dashboard.text
         assert "식사 인원은 1명입니다" in dashboard.text
         assert 'data-dashboard-date="' in dashboard.text
         assert "data-date-rollover-notice" in dashboard.text
@@ -267,15 +309,27 @@ def test_admin_meal_flow(monkeypatch) -> None:
         dashboard_employee_id = re.search(r"/absences/(\d+)/toggle", dashboard.text)
         assert dashboard_employee_id
 
-        toggled = client.post(
+        toggle_response = client.post(
             f"/absences/{dashboard_employee_id.group(1)}/toggle",
             data={"csrf_token": csrf},
-            follow_redirects=True,
+            headers={"X-Requested-With": "XMLHttpRequest"},
         )
-        assert "식사 상태를 변경했습니다" in toggled.text
+        assert toggle_response.status_code == 200
+        toggle_result = toggle_response.json()
+        assert toggle_result["message"] == "김길동님의 식사 상태를 변경했습니다."
+        assert toggle_result["is_absent"] is True
+        assert toggle_result["active_count"] == 1
+        assert toggle_result["absent_count"] == 1
+        assert toggle_result["meal_count"] == 0
+        assert toggle_result["absent_names"] == ["김길동"]
+        assert "식사 인원은 0명입니다" in toggle_result["sms_preview"]
+
+        toggled = client.get("/")
         assert "명이 식사합니다" in toggled.text
         assert 'data-meal-status="ABSENT"' in toggled.text
         assert "식사 인원은 0명입니다" in toggled.text
+        assert "data-summary-meal-count" in toggled.text
+        assert "data-confirm-sms-preview" in toggled.text
 
         csrf = csrf_from(toggled.text)
         confirmed = client.post(
@@ -307,12 +361,34 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "문자를 중복 수신할 수 있습니다" in failed_sms_dashboard.text
 
         csrf = csrf_from(failed_sms_dashboard.text)
+        changed_after_failure = client.post(
+            "/settings/sms",
+            data={
+                "csrf_token": csrf,
+                "company_name": "변경회사",
+                "sms_recipient": "01033334444",
+                "sms_template": "[{company_name}] {date} 변경된 식사 {meal_count}명",
+            },
+            follow_redirects=True,
+        )
+        assert "SMS 설정을 저장했습니다" in changed_after_failure.text
+
         retried_sms = client.post(
-            "/sms/retry", data={"csrf_token": csrf}, follow_redirects=True
+            "/sms/retry",
+            data={"csrf_token": csrf_from(changed_after_failure.text)},
+            follow_redirects=True,
         )
         assert "문자를 다시 전송했습니다" in retried_sms.text
         assert "전송 성공" in retried_sms.text
         assert "data-sms-retry-open" not in retried_sms.text
+
+        with SessionLocal() as db:
+            sms_attempts = list(
+                db.scalars(select(SmsLog).order_by(SmsLog.attempt_number))
+            )
+            assert len(sms_attempts) == 2
+            assert sms_attempts[1].recipient == sms_attempts[0].recipient
+            assert sms_attempts[1].message == sms_attempts[0].message
 
         history = client.get("/history")
         assert history.status_code == 200
@@ -321,7 +397,8 @@ def test_admin_meal_flow(monkeypatch) -> None:
         assert "확정 관리자" in history.text
         assert "김길동" in history.text
         assert "실제 발송 문구" in history.text
-        assert "010-0000-0000" in history.text
+        assert "010-1111-2222" in history.text
+        assert "[테스트회사]" in history.text
         assert "식사 인원은 0명입니다" in history.text
         assert "1차" in history.text
         assert "2차" in history.text

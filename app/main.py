@@ -6,11 +6,12 @@ import logging
 from math import ceil
 from pathlib import Path
 import re
+from string import Formatter
 from urllib.parse import quote
 
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
@@ -19,7 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import settings
 from .database import Base, SessionLocal, engine, get_db
-from .models import Admin, AdminSession, DailyMeal, Employee, Holiday, SmsLog
+from .models import Admin, AdminSession, DailyMeal, Employee, Holiday, ServiceSetting, SmsLog
 from .security import create_session, delete_session, get_session, hash_password, verify_password
 from .services import (
     BusinessRuleError,
@@ -27,6 +28,7 @@ from .services import (
     build_sms_message,
     confirm_and_send,
     get_or_create_daily_meal,
+    get_or_create_service_settings,
     holiday_name,
     meal_summary,
     reset_mock_confirmation,
@@ -54,6 +56,7 @@ def initialize_database() -> None:
                 )
             )
             db.commit()
+        get_or_create_service_settings(db)
 
 
 @asynccontextmanager
@@ -96,6 +99,30 @@ def normalize_phone(phone: str) -> str | None:
     if len(digits) != 11 or not digits.startswith("010"):
         raise ValueError("연락처는 010으로 시작하는 휴대전화 번호 11자리를 입력해 주세요.")
     return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
+
+
+def validate_sms_template(value: str) -> str:
+    template = value.strip()
+    if not template:
+        raise ValueError("SMS 문구를 입력해 주세요.")
+    if len(template) > 500:
+        raise ValueError("SMS 문구는 500자 이내로 입력해 주세요.")
+
+    allowed_fields = {"company_name", "date", "meal_count", "absent_count"}
+    try:
+        parsed = list(Formatter().parse(template))
+    except ValueError as exc:
+        raise ValueError("SMS 문구의 중괄호 형식을 확인해 주세요.") from exc
+
+    fields = {field_name for _, field_name, _, _ in parsed if field_name}
+    if not fields.issubset(allowed_fields):
+        invalid_fields = ", ".join(sorted(fields - allowed_fields))
+        raise ValueError(f"사용할 수 없는 SMS 변수입니다: {invalid_fields}")
+    if "meal_count" not in fields:
+        raise ValueError("SMS 문구에는 {meal_count} 변수가 필요합니다.")
+    if any(format_spec or conversion for _, field_name, format_spec, conversion in parsed if field_name):
+        raise ValueError("SMS 변수에는 서식 지정자를 사용할 수 없습니다.")
+    return template
 
 
 @app.exception_handler(401)
@@ -261,6 +288,8 @@ def settings_page(
     department_counts = {department: count for department, count in department_rows}
     holiday_count = db.scalar(select(func.count(Holiday.id))) or 0
     last_holiday_sync = db.scalar(select(func.max(Holiday.synced_at)))
+    service_settings = get_or_create_service_settings(db)
+    preview_date = seoul_now()
 
     return templates.TemplateResponse(
         request,
@@ -273,12 +302,77 @@ def settings_page(
             "department_counts": department_counts,
             "holiday_count": holiday_count,
             "last_holiday_sync": last_holiday_sync,
-            "preview_date": seoul_now(),
+            "preview_date": preview_date,
+            "settings_sms_preview": build_sms_message(
+                service_settings, preview_date.date(), 17, 3
+            ),
+            "service_settings": service_settings,
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
             "settings": settings,
         },
     )
+
+
+@app.post("/settings/general")
+def general_settings_update(
+    request: Request,
+    csrf_token: str = Form(...),
+    company_name: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    normalized_company_name = company_name.strip()
+    if not normalized_company_name:
+        return redirect("/settings?section=general", error="회사명을 입력해 주세요.")
+    if len(normalized_company_name) > 30:
+        return redirect(
+            "/settings?section=general",
+            error="회사명은 30자 이내로 입력해 주세요.",
+        )
+    service_settings = get_or_create_service_settings(db)
+    service_settings.company_name = normalized_company_name
+    db.commit()
+    return redirect(
+        "/settings?section=general",
+        message="기본 설정을 저장했습니다.",
+    )
+
+
+@app.post("/settings/sms")
+def sms_settings_update(
+    request: Request,
+    csrf_token: str = Form(...),
+    company_name: str = Form(...),
+    sms_recipient: str = Form(...),
+    sms_template: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    session = require_auth(request, db)
+    require_csrf(session, csrf_token)
+    normalized_company_name = company_name.strip()
+    if not normalized_company_name:
+        return redirect("/settings?section=sms", error="회사명을 입력해 주세요.")
+    if len(normalized_company_name) > 30:
+        return redirect(
+            "/settings?section=sms",
+            error="회사명은 30자 이내로 입력해 주세요.",
+        )
+    try:
+        normalized_recipient = normalize_phone(sms_recipient)
+        if normalized_recipient is None:
+            raise ValueError("식당 수신 번호를 입력해 주세요.")
+        normalized_template = validate_sms_template(sms_template)
+    except ValueError as exc:
+        return redirect("/settings?section=sms", error=str(exc))
+
+    service_settings = get_or_create_service_settings(db)
+    service_settings.company_name = normalized_company_name
+    service_settings.sms_recipient = normalized_recipient
+    service_settings.sms_template = normalized_template
+    db.commit()
+    return redirect("/settings?section=sms", message="SMS 설정을 저장했습니다.")
 
 
 @app.post("/account")
@@ -366,6 +460,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     )
     daily = get_or_create_daily_meal(db, now.date())
     summary = meal_summary(db, daily)
+    service_settings = get_or_create_service_settings(db)
     logs = list(
         db.scalars(
             select(SmsLog)
@@ -393,16 +488,21 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                 absence.employee_name_snapshot for absence in daily.absences
             ],
             "sms_preview": build_sms_message(
+                service_settings,
                 now.date(),
                 daily.meal_count
                 if daily.status == "CONFIRMED" and daily.meal_count is not None
                 else summary["meal_count"],
+                daily.absent_count
+                if daily.status == "CONFIRMED" and daily.absent_count is not None
+                else summary["absent_count"],
             ),
             "holiday": holiday_name(db, now.date()),
             "logs": logs,
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
             "settings": settings,
+            "service_settings": service_settings,
         },
     )
 
@@ -416,14 +516,44 @@ def absence_toggle(
 ):
     session = require_auth(request, db)
     require_csrf(session, csrf_token)
+    wants_json = request.headers.get("x-requested-with") == "XMLHttpRequest"
     employee = db.get(Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404)
     daily = get_or_create_daily_meal(db, seoul_now().date())
     try:
-        toggle_absence(db, daily, employee)
-        return redirect("/", message=f"{employee.name}님의 식사 상태를 변경했습니다.")
+        is_absent = toggle_absence(db, daily, employee)
+        message = f"{employee.name}님의 식사 상태를 변경했습니다."
+        if wants_json:
+            summary = meal_summary(db, daily)
+            service_settings = get_or_create_service_settings(db)
+            absent_names = [
+                current.name
+                for current in summary["employees"]
+                if current.id in summary["absent_ids"]
+            ]
+            return JSONResponse(
+                {
+                    "message": message,
+                    "employee_id": employee.id,
+                    "employee_name": employee.name,
+                    "is_absent": is_absent,
+                    "active_count": summary["active_count"],
+                    "absent_count": summary["absent_count"],
+                    "meal_count": summary["meal_count"],
+                    "absent_names": absent_names,
+                    "sms_preview": build_sms_message(
+                        service_settings,
+                        daily.meal_date,
+                        int(summary["meal_count"]),
+                        int(summary["absent_count"]),
+                    ),
+                }
+            )
+        return redirect("/", message=message)
     except BusinessRuleError as exc:
+        if wants_json:
+            return JSONResponse({"error": str(exc)}, status_code=409)
         return redirect("/", error=str(exc))
 
 

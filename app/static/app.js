@@ -10,6 +10,43 @@ const formatPhoneInput = (input) => {
   }
 };
 
+const dismissSuccessToast = (toast) => {
+  window.setTimeout(() => toast.remove(), 3000);
+};
+
+const showToast = (message, type = "success") => {
+  document.querySelector(".ajax-toast")?.remove();
+  const toast = document.createElement("div");
+  toast.className = `toast ${type} ajax-toast`;
+  toast.setAttribute("role", type === "error" ? "alert" : "status");
+  toast.textContent = message;
+  document.body.append(toast);
+  if (type === "success") dismissSuccessToast(toast);
+};
+
+document.querySelectorAll(".toast.success").forEach(dismissSuccessToast);
+
+const currentUrl = new URL(window.location.href);
+if (currentUrl.searchParams.has("message") || currentUrl.searchParams.has("error")) {
+  currentUrl.searchParams.delete("message");
+  currentUrl.searchParams.delete("error");
+  window.history.replaceState({}, "", currentUrl);
+}
+
+try {
+  const savedScroll = JSON.parse(
+    window.sessionStorage.getItem("lunchcall-scroll-position") || "null",
+  );
+  window.sessionStorage.removeItem("lunchcall-scroll-position");
+  if (savedScroll?.path === window.location.pathname) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.scrollTo(savedScroll.x, savedScroll.y));
+    });
+  }
+} catch {
+  window.sessionStorage.removeItem("lunchcall-scroll-position");
+}
+
 document.querySelectorAll("[data-phone-input]").forEach((input) => {
   input.addEventListener("input", () => {
     formatPhoneInput(input);
@@ -163,6 +200,7 @@ if (employeeSearchInput) {
   });
 }
 
+let refreshMealEmployeeFilter = () => {};
 const mealSearchInput = document.querySelector("[data-meal-search]");
 
 if (mealSearchInput) {
@@ -197,6 +235,7 @@ if (mealSearchInput) {
       : `전체 ${mealEmployeeRows.length}명`;
     mealNoResults.hidden = visibleCount !== 0;
   };
+  refreshMealEmployeeFilter = filterMealEmployees;
 
   mealSearchInput.addEventListener("input", filterMealEmployees);
   mealSearchInput.addEventListener("compositionend", filterMealEmployees);
@@ -217,6 +256,81 @@ if (mealSearchInput) {
     });
   });
 }
+
+document.querySelectorAll("[data-meal-employee]").forEach((form) => {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (form.dataset.submitting === "true") return;
+
+    const button = form.querySelector(".employee-card");
+    const scrollPosition = { x: window.scrollX, y: window.scrollY };
+    const restoreScrollPosition = () => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.scrollTo(scrollPosition.x, scrollPosition.y);
+        });
+      });
+    };
+    form.dataset.submitting = "true";
+    form.setAttribute("aria-busy", "true");
+    button.classList.add("is-updating");
+    button.setAttribute("aria-disabled", "true");
+
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      if (response.redirected) {
+        window.sessionStorage.setItem(
+          "lunchcall-scroll-position",
+          JSON.stringify({ path: new URL(response.url).pathname, ...scrollPosition }),
+        );
+        window.location.assign(response.url);
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "식사 상태를 변경하지 못했습니다.");
+
+      const state = result.is_absent ? "불참" : "식사";
+      form.dataset.mealStatus = result.is_absent ? "ABSENT" : "MEAL";
+      button.classList.toggle("is-absent", result.is_absent);
+      button.setAttribute("aria-pressed", String(result.is_absent));
+      button.setAttribute(
+        "aria-label",
+        `${result.employee_name}, 현재 ${state}. 눌러서 변경`,
+      );
+      button.querySelector(".meal-state").textContent = state;
+
+      const setText = (selector, value) => {
+        const element = document.querySelector(selector);
+        if (element) element.textContent = value;
+      };
+      setText("[data-active-count]", result.active_count);
+      setText("[data-absent-count]", result.absent_count);
+      setText("[data-meal-count]", result.meal_count);
+      setText("[data-summary-meal-count]", result.meal_count);
+      setText("[data-summary-absent-names]", result.absent_names.join(", ") || "없음");
+      setText("[data-confirm-active-count]", `${result.active_count}명`);
+      setText("[data-confirm-absent-count]", `${result.absent_count}명`);
+      setText("[data-confirm-meal-count]", `${result.meal_count}명`);
+      setText("[data-confirm-absent-names]", result.absent_names.join(", ") || "없음");
+      setText("[data-confirm-sms-preview]", result.sms_preview);
+      refreshMealEmployeeFilter();
+      showToast(result.message);
+    } catch (error) {
+      showToast(error.message || "식사 상태를 변경하지 못했습니다.", "error");
+    } finally {
+      delete form.dataset.submitting;
+      form.removeAttribute("aria-busy");
+      button.classList.remove("is-updating");
+      button.removeAttribute("aria-disabled");
+      restoreScrollPosition();
+    }
+  });
+});
 
 const confirmSmsDialog = document.querySelector("#confirm-sms-dialog");
 

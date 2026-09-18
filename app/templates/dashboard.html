@@ -27,9 +27,9 @@
 {% endif %}
 
 <section class="stats-grid">
-  <article class="stat-card"><span>재직 직원</span><strong>{{ daily.active_count if daily.status == 'CONFIRMED' else summary.active_count }}<small>명</small></strong><p>오늘 집계 대상</p></article>
-  <article class="stat-card absent"><span>불참 인원</span><strong>{{ daily.absent_count if daily.status == 'CONFIRMED' else summary.absent_count }}<small>명</small></strong><p>식사하지 않음</p></article>
-  <article class="stat-card meal"><span>최종 식사 인원</span><strong>{{ daily.meal_count if daily.status == 'CONFIRMED' else summary.meal_count }}<small>명</small></strong><p>재직 직원 − 불참 인원</p></article>
+  <article class="stat-card"><span>재직 직원</span><strong><span data-active-count>{{ daily.active_count if daily.status == 'CONFIRMED' else summary.active_count }}</span><small>명</small></strong><p>오늘 집계 대상</p></article>
+  <article class="stat-card absent"><span>불참 인원</span><strong><span data-absent-count>{{ daily.absent_count if daily.status == 'CONFIRMED' else summary.absent_count }}</span><small>명</small></strong><p>식사하지 않음</p></article>
+  <article class="stat-card meal"><span>최종 식사 인원</span><strong><span data-meal-count>{{ daily.meal_count if daily.status == 'CONFIRMED' else summary.meal_count }}</span><small>명</small></strong><p>재직 직원 − 불참 인원</p></article>
 </section>
 
 <section class="content-grid">
@@ -81,16 +81,16 @@
     <article class="panel summary-panel">
       <span class="eyebrow">FINAL CHECK</span>
       <h2>최종 확인</h2>
-      <div class="summary-number"><strong>{{ daily.meal_count if daily.status == 'CONFIRMED' else summary.meal_count }}</strong><span>명이 식사합니다</span></div>
+      <div class="summary-number"><strong data-summary-meal-count>{{ daily.meal_count if daily.status == 'CONFIRMED' else summary.meal_count }}</strong><span>명이 식사합니다</span></div>
       <dl>
-        <div><dt>불참자</dt><dd>
+        <div><dt>불참자</dt><dd data-summary-absent-names>
           {% if daily.status == 'CONFIRMED' %}
             {{ confirmed_absent_names|join(', ') if confirmed_absent_names else '없음' }}
           {% else %}
             {{ draft_absent_names|join(', ') if draft_absent_names else '없음' }}
           {% endif %}
         </dd></div>
-        <div><dt>발송 번호</dt><dd>{{ settings.sms_recipient }}</dd></div>
+        <div><dt>발송 번호</dt><dd>{{ service_settings.sms_recipient }}</dd></div>
         <div><dt>확정 가능</dt><dd>한국시간 오전 9:50부터</dd></div>
       </dl>
       {% if daily.status == 'DRAFT' %}
@@ -192,19 +192,19 @@
     </div>
 
     <div class="confirm-counts">
-      <div><span>재직</span><strong>{{ summary.active_count }}명</strong></div>
-      <div><span>불참</span><strong>{{ summary.absent_count }}명</strong></div>
-      <div class="highlight"><span>식사</span><strong>{{ summary.meal_count }}명</strong></div>
+      <div><span>재직</span><strong data-confirm-active-count>{{ summary.active_count }}명</strong></div>
+      <div><span>불참</span><strong data-confirm-absent-count>{{ summary.absent_count }}명</strong></div>
+      <div class="highlight"><span>식사</span><strong data-confirm-meal-count>{{ summary.meal_count }}명</strong></div>
     </div>
 
     <div class="confirm-detail">
-      <div><span>불참자</span><strong>{{ draft_absent_names|join(', ') if draft_absent_names else '없음' }}</strong></div>
-      <div><span>수신 번호</span><strong>{{ settings.sms_recipient }}</strong></div>
+      <div><span>불참자</span><strong data-confirm-absent-names>{{ draft_absent_names|join(', ') if draft_absent_names else '없음' }}</strong></div>
+      <div><span>수신 번호</span><strong>{{ service_settings.sms_recipient }}</strong></div>
     </div>
 
     <div class="sms-preview">
       <span>실제 발송 문구</span>
-      <p>{{ sms_preview }}</p>
+      <p data-confirm-sms-preview>{{ sms_preview }}</p>
     </div>
 
     <div class="confirm-warning">

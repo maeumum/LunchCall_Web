@@ -32,6 +32,18 @@ class AdminSession(Base):
     admin: Mapped[Admin] = relationship()
 
 
+class ServiceSetting(Base):
+    __tablename__ = "service_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    company_name: Mapped[str] = mapped_column(String(80))
+    sms_recipient: Mapped[str] = mapped_column(String(30))
+    sms_template: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class Employee(Base):
     __tablename__ = "employees"
 
@@ -106,4 +118,3 @@ class Holiday(Base):
     name: Mapped[str] = mapped_column(String(120))
     source: Mapped[str] = mapped_column(String(80), default="KASI")
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-

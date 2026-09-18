@@ -23,48 +23,50 @@
     <article class="panel settings-panel">
       <div class="panel-heading">
         <div><h2>기본 설정</h2><p>서비스에서 공통으로 사용하는 정보입니다.</p></div>
-        <span class="prototype-label">화면 설계</span>
+        <span class="prototype-label">SQLite 저장</span>
       </div>
-      <div class="stack-form settings-form">
+      <form class="stack-form settings-form" method="post" action="/settings/general">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label>회사명 <b>*</b>
-          <input value="{{ settings.sms_company_name }}" maxlength="30" data-settings-company>
+          <input name="company_name" value="{{ service_settings.company_name }}" maxlength="30" data-settings-company required>
           <small class="field-help">SMS 발송 문구에 표시되는 회사명입니다.</small>
         </label>
         <label>기준 시간대
           <input value="Asia/Seoul" readonly>
           <small class="field-help">식수 확정과 공휴일 판별은 한국 시간을 기준으로 합니다.</small>
         </label>
-        <button class="primary settings-save" type="button" aria-describedby="general-save-notice" disabled>DB 연결 후 저장 가능</button>
-        <p class="settings-notice" id="general-save-notice">현재는 화면 설계 단계로 입력한 값이 저장되지 않습니다.</p>
-      </div>
+        <button class="primary settings-save" type="submit" data-submitting-text="저장 중...">기본 설정 저장</button>
+        <p class="settings-notice">저장한 회사명은 다음 식수 확정 문자부터 적용됩니다.</p>
+      </form>
     </article>
 
     {% elif active_section == 'sms' %}
     <article class="panel settings-panel">
       <div class="panel-heading">
         <div><h2>SMS 설정</h2><p>식당 수신 번호와 발송 문구를 구성합니다.</p></div>
-        <span class="prototype-label">화면 설계</span>
+        <span class="prototype-label">SQLite 저장</span>
       </div>
       <div class="settings-split">
-        <div class="stack-form settings-form">
+        <form class="stack-form settings-form" method="post" action="/settings/sms">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <label>회사명 <b>*</b>
-            <input value="{{ settings.sms_company_name }}" maxlength="30" data-sms-company>
+            <input name="company_name" value="{{ service_settings.company_name }}" maxlength="30" data-sms-company required>
           </label>
           <label>식당 수신 번호 <b>*</b>
-            <input value="{{ settings.sms_recipient }}" type="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}" data-phone-input data-sms-recipient>
+            <input name="sms_recipient" value="{{ service_settings.sms_recipient }}" type="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}" data-phone-input data-sms-recipient required>
           </label>
           <label>문자 템플릿 <b>*</b>
-            <textarea rows="4" data-sms-template>[{company_name}] {date} 식사 인원은 {meal_count}명입니다.</textarea>
+            <textarea name="sms_template" rows="4" maxlength="500" data-sms-template required>{{ service_settings.sms_template }}</textarea>
             <small class="field-help">{company_name}, {date}, {meal_count}, {absent_count} 변수를 사용할 수 있습니다.</small>
           </label>
-          <button class="primary settings-save" type="button" aria-describedby="sms-save-notice" disabled>DB 연결 후 저장 가능</button>
-          <p class="settings-notice" id="sms-save-notice">현재는 미리보기만 제공하며 입력한 값은 저장되지 않습니다.</p>
-        </div>
+          <button class="primary settings-save" type="submit" data-submitting-text="저장 중...">SMS 설정 저장</button>
+          <p class="settings-notice">설정 변경 전의 확정·발송 이력에는 기존 번호와 문구가 그대로 유지됩니다.</p>
+        </form>
         <aside class="settings-preview-card" data-sms-preview data-preview-date="{{ preview_date.year }}년 {{ preview_date.month }}월 {{ preview_date.day }}일">
           <span class="eyebrow">MESSAGE PREVIEW</span>
           <h3>발송 미리보기</h3>
-          <div class="preview-recipient"><span>수신</span><strong data-sms-preview-recipient>{{ settings.sms_recipient }}</strong></div>
-          <div class="preview-message" data-sms-preview-message>[{{ settings.sms_company_name }}] {{ preview_date.year }}년 {{ preview_date.month }}월 {{ preview_date.day }}일 식사 인원은 17명입니다.</div>
+          <div class="preview-recipient"><span>수신</span><strong data-sms-preview-recipient>{{ service_settings.sms_recipient }}</strong></div>
+          <div class="preview-message" data-sms-preview-message>{{ settings_sms_preview }}</div>
           <div class="preview-meta"><span>예시 식사 17명 · 불참 3명</span><span data-sms-length></span></div>
         </aside>
       </div>

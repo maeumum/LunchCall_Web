@@ -9,10 +9,11 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .models import DailyMeal, Employee, Holiday, MealAbsence, SmsLog
+from .models import DailyMeal, Employee, Holiday, MealAbsence, ServiceSetting, SmsLog
 
 SEOUL = ZoneInfo("Asia/Seoul")
 CONFIRM_TIME = time(9, 50)
+DEFAULT_SMS_TEMPLATE = "[{company_name}] {date} 식사 인원은 {meal_count}명입니다."
 
 
 class BusinessRuleError(Exception):
@@ -32,6 +33,22 @@ def get_or_create_daily_meal(db: Session, meal_date: date) -> DailyMeal:
     db.commit()
     db.refresh(daily)
     return daily
+
+
+def get_or_create_service_settings(db: Session) -> ServiceSetting:
+    service_settings = db.get(ServiceSetting, 1)
+    if service_settings:
+        return service_settings
+    service_settings = ServiceSetting(
+        id=1,
+        company_name=settings.sms_company_name,
+        sms_recipient=settings.sms_recipient,
+        sms_template=DEFAULT_SMS_TEMPLATE,
+    )
+    db.add(service_settings)
+    db.commit()
+    db.refresh(service_settings)
+    return service_settings
 
 
 def holiday_name(db: Session, target: date) -> str | None:
@@ -94,20 +111,39 @@ def toggle_absence(db: Session, daily: DailyMeal, employee: Employee) -> bool:
     return is_absent
 
 
-def build_sms_message(meal_date: date, meal_count: int) -> str:
-    return (
-        f"[{settings.sms_company_name}] {meal_date.year}년 {meal_date.month}월 "
-        f"{meal_date.day}일 식사 인원은 {meal_count}명입니다."
+def build_sms_message(
+    service_settings: ServiceSetting,
+    meal_date: date,
+    meal_count: int,
+    absent_count: int,
+) -> str:
+    return service_settings.sms_template.format(
+        company_name=service_settings.company_name,
+        date=f"{meal_date.year}년 {meal_date.month}월 {meal_date.day}일",
+        meal_count=meal_count,
+        absent_count=absent_count,
     )
 
 
-def send_sms(db: Session, daily: DailyMeal, attempt_number: int) -> SmsLog:
-    message = build_sms_message(daily.meal_date, daily.meal_count or 0)
+def send_sms(
+    db: Session,
+    daily: DailyMeal,
+    attempt_number: int,
+    recipient: str | None = None,
+    message: str | None = None,
+) -> SmsLog:
+    service_settings = get_or_create_service_settings(db)
+    resolved_message = message or build_sms_message(
+        service_settings,
+        daily.meal_date,
+        daily.meal_count or 0,
+        daily.absent_count or 0,
+    )
     log = SmsLog(
         daily_meal_id=daily.id,
         attempt_number=attempt_number,
-        recipient=settings.sms_recipient,
-        message=message,
+        recipient=recipient or service_settings.sms_recipient,
+        message=resolved_message,
         status="PENDING",
     )
     db.add(log)
@@ -163,7 +199,13 @@ def retry_failed_sms(db: Session, daily: DailyMeal) -> SmsLog:
     )
     if not latest or latest.status != "FAILED":
         raise BusinessRuleError("실패한 문자만 재전송할 수 있습니다.")
-    return send_sms(db, daily, latest.attempt_number + 1)
+    return send_sms(
+        db,
+        daily,
+        latest.attempt_number + 1,
+        recipient=latest.recipient,
+        message=latest.message,
+    )
 
 
 def reset_mock_confirmation(db: Session, daily: DailyMeal) -> None:
